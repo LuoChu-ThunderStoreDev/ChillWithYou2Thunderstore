@@ -1,0 +1,166 @@
+name: Sync Release Assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      mod_key:
+        description: Mod key from config/mods.json
+        required: false
+        type: string
+      tag:
+        description: Optional release tag override (example v1.2.3)
+        required: false
+        type: string
+      all:
+        description: Sync all enabled mods
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: Do not push assets branch
+        required: false
+        default: false
+        type: boolean
+  repository_dispatch:
+    types: [sync-release-assets]
+  schedule:
+    - cron: "0 * * * *"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure executable scripts
+        run: chmod +x scripts/*.sh
+
+      - name: Validate mods config
+        run: ./scripts/validate_mods_config.sh --config config/mods.json
+
+      - name: Resolve sync inputs
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_MOD_KEY: ${{ inputs.mod_key }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_ALL: ${{ inputs.all }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          PAYLOAD_MOD_KEY: ${{ github.event.client_payload.mod_key }}
+          PAYLOAD_TAG: ${{ github.event.client_payload.tag }}
+          PAYLOAD_ALL: ${{ github.event.client_payload.all }}
+          PAYLOAD_DRY_RUN: ${{ github.event.client_payload.dry_run }}
+        run: |
+          set -euo pipefail
+
+          MOD_KEY="${INPUT_MOD_KEY:-}"
+          TAG="${INPUT_TAG:-}"
+          RUN_ALL="${INPUT_ALL:-false}"
+          DRY_RUN_VAL="${INPUT_DRY_RUN:-false}"
+
+          echo "::group::Incoming event payload"
+          echo "event=${EVENT_NAME}"
+          echo "input.mod_key=${INPUT_MOD_KEY:-}"
+          echo "input.tag=${INPUT_TAG:-}"
+          echo "input.all=${INPUT_ALL:-}"
+          echo "input.dry_run=${INPUT_DRY_RUN:-}"
+          if [[ -n "${PAYLOAD_MOD_KEY:-}" ]]; then
+            echo "payload.mod_key=<provided>"
+          else
+            echo "payload.mod_key=<empty>"
+          fi
+          if [[ -n "${PAYLOAD_TAG:-}" ]]; then
+            echo "payload.tag=<provided>"
+          else
+            echo "payload.tag=<empty>"
+          fi
+          if [[ -n "${PAYLOAD_ALL:-}" ]]; then
+            echo "payload.all=<provided>"
+          else
+            echo "payload.all=<empty>"
+          fi
+          if [[ -n "${PAYLOAD_DRY_RUN:-}" ]]; then
+            echo "payload.dry_run=<provided>"
+          else
+            echo "payload.dry_run=<empty>"
+          fi
+          echo "::endgroup::"
+
+          if [[ "${EVENT_NAME}" == "repository_dispatch" ]]; then
+            if [[ -n "${PAYLOAD_MOD_KEY:-}" ]]; then MOD_KEY="${PAYLOAD_MOD_KEY}"; fi
+            if [[ -n "${PAYLOAD_TAG:-}" ]]; then TAG="${PAYLOAD_TAG}"; fi
+            if [[ "${PAYLOAD_ALL:-false}" == "true" ]]; then RUN_ALL="true"; fi
+            if [[ "${PAYLOAD_DRY_RUN:-false}" == "true" ]]; then DRY_RUN_VAL="true"; fi
+          fi
+
+          if [[ "${EVENT_NAME}" == "schedule" ]]; then
+            RUN_ALL="true"
+          fi
+
+          {
+            echo "mod_key=${MOD_KEY}"
+            echo "tag=${TAG}"
+            echo "run_all=${RUN_ALL}"
+            echo "dry_run=${DRY_RUN_VAL}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Print resolved sync inputs
+        run: |
+          set -euo pipefail
+          echo "Resolved mod_key=${{ steps.resolve.outputs.mod_key || '<none>' }}"
+          echo "Resolved tag=${{ steps.resolve.outputs.tag || '<latest>' }}"
+          echo "Resolved run_all=${{ steps.resolve.outputs.run_all }}"
+          echo "Resolved dry_run=${{ steps.resolve.outputs.dry_run }}"
+
+      - name: Run sync
+        id: sync
+        env:
+          MOD_KEY: ${{ steps.resolve.outputs.mod_key }}
+          TAG: ${{ steps.resolve.outputs.tag }}
+          RUN_ALL: ${{ steps.resolve.outputs.run_all }}
+          DRY_RUN_VAL: ${{ steps.resolve.outputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          ARGS=(--config config/mods.json)
+
+          if [[ "${RUN_ALL}" == "true" ]]; then
+            ARGS+=(--all)
+          elif [[ -n "${MOD_KEY}" ]]; then
+            ARGS+=(--mod-key "${MOD_KEY}")
+          fi
+
+          if [[ -n "${TAG}" ]]; then
+            ARGS+=(--tag "${TAG}")
+          fi
+
+          if [[ "${DRY_RUN_VAL}" == "true" ]]; then
+            export DRY_RUN=true
+          fi
+
+          echo "::group::Sync arguments"
+          printf 'ARG %q\n' "${ARGS[@]}"
+          echo "DRY_RUN=${DRY_RUN:-false}"
+          echo "::endgroup::"
+
+          ./scripts/sync_release_assets.sh "${ARGS[@]}"
+
+      - name: Write sync summary
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "## Sync Release Assets Summary"
+            echo ""
+            echo "- mod_key: ${{ steps.resolve.outputs.mod_key || '<none>' }}"
+            echo "- tag: ${{ steps.resolve.outputs.tag || '<latest>' }}"
+            echo "- run_all: ${{ steps.resolve.outputs.run_all }}"
+            echo "- dry_run: ${{ steps.resolve.outputs.dry_run }}"
+            echo "- status: ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"

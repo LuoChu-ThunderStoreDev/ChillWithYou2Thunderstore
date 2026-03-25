@@ -1,0 +1,133 @@
+{
+    "mods": [
+        {
+            "key": "igpu-savior",
+            "enabled": true,
+            "source": {
+                "owner": "Small-tailqwq",
+                "repo": "iGPUSaviorMod"
+            },
+            "assets": [
+                {
+                    "matcher": "*.dll",
+                    "kind": "file",
+                    "target": "BepInEx/plugins/"
+                },
+                {
+                    "matcher": "*.zip",
+                    "kind": "zip",
+                    "preserve_unmatched": true,
+                    "exclude": [
+                        "BepInEx/*",
+                        "manifest.json",
+                        "README.md",
+                        "icon.png",
+                        "CHANGELOG.md",
+                        "winhttp.dll",
+                        "doorstop_config.ini"
+                    ],
+                    "extract": [
+                        {
+                            "from": "BepInEx/plugins/*.dll",
+                            "to": "BepInEx/plugins/"
+                        }
+                    ]
+                }
+            ],
+            "thunderstore": {
+                "community": "chillwithyou",
+                "namespace": "Small_tailqwq",
+                "name": "iGPU_Savior",
+                "description": "性能和体验优化插件。",
+                "dependencies": [
+                    "BepInEx-BepInExPack-5.4.2304"
+                ]
+            },
+            "package_files": {
+                "readme": "templates/igpu-savior/README.md",
+                "icon": "templates/igpu-savior/icon.png"
+            }
+        },
+        {
+            "key": "realtime-weather",
+            "enabled": true,
+            "source": {
+                "owner": "Small-tailqwq",
+                "repo": "RealTimeWeatherMod"
+            },
+            "assets": [
+                {
+                    "matcher": "*.dll",
+                    "kind": "file",
+                    "target": "BepInEx/plugins/"
+                },
+                {
+                    "matcher": "*.zip",
+                    "kind": "zip",
+                    "extract": [
+                        {
+                            "from": "BepInEx/plugins/*.dll",
+                            "to": "BepInEx/plugins/"
+                        }
+                    ]
+                }
+            ],
+            "thunderstore": {
+                "community": "chillwithyou",
+                "namespace": "Small_tailqwq",
+                "name": "RealTimeWeather",
+                "description": "实时天气同步插件。",
+                "dependencies": [
+                    "BepInEx-BepInExPack-5.4.2304"
+                ]
+            },
+            "package_files": {
+                "readme": "templates/realtime-weather/README.md",
+                "icon": "templates/realtime-weather/icon.png"
+            }
+        },
+        {
+            "key": "aichat",
+            "enabled": true,
+            "source": {
+                "owner": "qzrs777",
+                "repo": "AIChat"
+            },
+            "assets": [
+                {
+                    "matcher": "*.zip",
+                    "kind": "zip",
+                    "extract": [
+                        {
+                            "from": "BepInEx/plugins/*.dll",
+                            "to": "BepInEx/plugins/"
+                        },
+                        {
+                            "from": "plugins/*.dll",
+                            "to": "BepInEx/plugins/"
+                        },
+                        {
+                            "from": "*.dll",
+                            "to": "BepInEx/plugins/"
+                        }
+                    ]
+                }
+            ],
+            "thunderstore": {
+                "community": "chillwithyou",
+                "namespace": "qzrs777",
+                "name": "AIChat",
+                "description": "AI 聊天插件（zip 资产测试项）。",
+                "dependencies": [
+                    "BepInEx-BepInExPack-5.4.2304"
+                ]
+            },
+            "package_files": {
+                "readme": "templates/aichat/README.md",
+                "readme_source": "README.md",
+                "sync_with_source_readme": true,
+                "icon": "templates/aichat/icon.png"
+            }
+        }
+    ]
+}
