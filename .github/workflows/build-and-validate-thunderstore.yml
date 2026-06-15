@@ -1,0 +1,176 @@
+name: Build And Validate Thunderstore Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      mod_key:
+        description: Mod key from config/mods.json
+        required: true
+        type: string
+      version:
+        description: Optional version from assets branch, defaults to latest
+        required: false
+        type: string
+  repository_dispatch:
+    types: [build-validate-thunderstore]
+
+jobs:
+  build-validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure executable scripts
+        run: chmod +x scripts/*.sh
+
+      - name: Validate mods config
+        run: ./scripts/validate_mods_config.sh --config config/mods.json
+
+      - name: Resolve inputs
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_MOD_KEY: ${{ inputs.mod_key }}
+          INPUT_VERSION: ${{ inputs.version }}
+          PAYLOAD_MOD_KEY: ${{ github.event.client_payload.mod_key }}
+          PAYLOAD_VERSION: ${{ github.event.client_payload.version }}
+        run: |
+          set -euo pipefail
+          MOD_KEY="${INPUT_MOD_KEY:-}"
+          VERSION="${INPUT_VERSION:-}"
+
+          echo "::group::Incoming event payload"
+          echo "event=${EVENT_NAME}"
+          echo "input.mod_key=${INPUT_MOD_KEY:-}"
+          echo "input.version=${INPUT_VERSION:-}"
+          if [[ -n "${PAYLOAD_MOD_KEY:-}" ]]; then
+            echo "payload.mod_key=<provided>"
+          else
+            echo "payload.mod_key=<empty>"
+          fi
+          if [[ -n "${PAYLOAD_VERSION:-}" ]]; then
+            echo "payload.version=<provided>"
+          else
+            echo "payload.version=<empty>"
+          fi
+          echo "::endgroup::"
+
+          if [[ "${EVENT_NAME}" == "repository_dispatch" ]]; then
+            if [[ -n "${PAYLOAD_MOD_KEY:-}" ]]; then MOD_KEY="${PAYLOAD_MOD_KEY}"; fi
+            if [[ -n "${PAYLOAD_VERSION:-}" ]]; then VERSION="${PAYLOAD_VERSION}"; fi
+          fi
+
+          if [[ -z "${MOD_KEY}" ]]; then
+            echo "mod_key is required" >&2
+            exit 1
+          fi
+
+          {
+            echo "mod_key=${MOD_KEY}"
+            echo "version=${VERSION}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Print resolved inputs
+        run: |
+          set -euo pipefail
+          echo "Resolved mod_key=${{ steps.resolve.outputs.mod_key }}"
+          echo "Resolved version=${{ steps.resolve.outputs.version || '<latest>' }}"
+
+      - name: Build package
+        id: build
+        run: |
+          set -euo pipefail
+          ARGS=(--config config/mods.json --mod-key "${{ steps.resolve.outputs.mod_key }}")
+          if [[ -n "${{ steps.resolve.outputs.version }}" ]]; then
+            ARGS+=(--version "${{ steps.resolve.outputs.version }}")
+          fi
+
+          echo "::group::Build arguments"
+          printf 'ARG %q\n' "${ARGS[@]}"
+          echo "::endgroup::"
+
+          ./scripts/build_package.sh "${ARGS[@]}"
+
+      - name: Print build outputs
+        run: |
+          set -euo pipefail
+          echo "mod_key=${{ steps.build.outputs.mod_key }}"
+          echo "version=${{ steps.build.outputs.version }}"
+          echo "namespace=${{ steps.build.outputs.namespace }}"
+          echo "package_path=${{ steps.build.outputs.package_path }}"
+          echo "manifest_path=${{ steps.build.outputs.manifest_path }}"
+          echo "readme_path=${{ steps.build.outputs.readme_path }}"
+          echo "icon_path=${{ steps.build.outputs.icon_path }}"
+
+      - name: Check namespace token secret
+        env:
+          THUNDERSTORE_AUTH_TOKEN: ${{ secrets[steps.build.outputs.thunder_token_key] }}
+          THUNDER_TOKEN_KEY: ${{ steps.build.outputs.thunder_token_key }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${THUNDERSTORE_AUTH_TOKEN}" ]]; then
+            echo "Missing Thunderstore token secret for namespace."
+            exit 1
+          fi
+
+      - name: Validate package files
+        id: validate
+        env:
+          THUNDERSTORE_AUTH_TOKEN: ${{ secrets[steps.build.outputs.thunder_token_key] }}
+          THUNDERSTORE_AUTH_SCHEME: ${{ vars.THUNDERSTORE_AUTH_SCHEME }}
+        run: |
+          set -euo pipefail
+          ./scripts/validate_thunderstore.sh \
+            --manifest "${{ steps.build.outputs.manifest_path }}" \
+            --readme "${{ steps.build.outputs.readme_path }}" \
+            --icon "${{ steps.build.outputs.icon_path }}" \
+            --namespace "${{ steps.build.outputs.namespace }}"
+
+      - name: Print validation outputs
+        run: |
+          set -euo pipefail
+          echo "manifest_success=${{ steps.validate.outputs.manifest_success }}"
+          echo "readme_success=${{ steps.validate.outputs.readme_success }}"
+          echo "icon_success=${{ steps.validate.outputs.icon_success }}"
+          echo "validation_warning=${{ steps.validate.outputs.validation_warning }}"
+
+      - name: Write step summary
+        run: |
+          set -euo pipefail
+          {
+            echo "## Build And Validate Summary"
+            echo ""
+            echo "- mod_key: ${{ steps.build.outputs.mod_key }}"
+            echo "- version: ${{ steps.build.outputs.version }}"
+            echo "- namespace: ${{ steps.build.outputs.namespace }}"
+            echo "- package: ${{ steps.build.outputs.package_path }}"
+            echo "- manifest_success: ${{ steps.validate.outputs.manifest_success }}"
+            echo "- readme_success: ${{ steps.validate.outputs.readme_success }}"
+            echo "- icon_success: ${{ steps.validate.outputs.icon_success }}"
+            echo "- validation_warning: ${{ steps.validate.outputs.validation_warning }}"
+            if [[ "${{ steps.validate.outputs.validation_warning }}" == "true" ]]; then
+              echo ""
+              echo "> Validation produced warnings. Check artifact validation-* for details."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ steps.build.outputs.mod_key }}-${{ steps.build.outputs.version }}
+          path: ${{ steps.build.outputs.package_path }}
+
+      - name: Upload validation logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-${{ steps.build.outputs.mod_key }}-${{ steps.build.outputs.version }}
+          path: |
+            build/validation/*.json
+            build/validation/raw/*.body
+            build/validation/raw/*.stderr
