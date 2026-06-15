@@ -307,5 +307,125 @@ if [[ -z "${GITHUB_OUTPUT:-}" ]]; then
 fi
 
 toml_path="$(generate_thunderstore_toml "$toml_dir")"
-echo "Generated thunderstore.toml:"
-cat "$toml_path"
+echo "Generated thunderstore.toml"
+if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+  {
+    echo "<details><summary>thunderstore.toml</summary>"
+    echo ""
+    echo '```toml'
+    cat "$toml_path"
+    echo '```'
+    echo ""
+    echo "</details>"
+  } >> "$GITHUB_STEP_SUMMARY"
+fi
+
+# --- Dry-run: stop here ---
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo ""
+  echo "DRY RUN — stopping before upload."
+  echo "Would have published ${name} v${VERSION} to ${namespace} on ${community}."
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "published=false" >> "$GITHUB_OUTPUT"
+  fi
+  exit 0
+fi
+
+# --- Initiate upload ---
+file_size="$(stat -c%s "$PACKAGE_ZIP")"
+echo ""
+echo "Initiating upload for ${name} (${file_size} bytes)..."
+
+tmp_response="$(mktemp)"
+initiate_upload "$name" "$file_size" "$tmp_response"
+init_status=$?
+
+if [[ $init_status -ne 0 ]]; then
+  echo "Initiate upload failed (curl returned non-zero exit)" >&2
+  cat "$tmp_response" >&2 2>/dev/null || true
+  rm -f "$tmp_response"
+  exit 1
+fi
+
+if ! jq -e '.user_media.uuid' "$tmp_response" >/dev/null 2>&1; then
+  echo "Initiate upload returned unexpected response:" >&2
+  cat "$tmp_response" >&2
+  rm -f "$tmp_response"
+  exit 1
+fi
+
+uuid="$(jq -r '.user_media.uuid' "$tmp_response")"
+upload_urls_json="$(jq -c '.upload_urls' "$tmp_response")"
+rm -f "$tmp_response"
+echo "Upload UUID: ${uuid}"
+
+# --- Upload chunks ---
+parts_json="$(upload_chunks "$PACKAGE_ZIP" "$upload_urls_json" "$uuid")"
+if [[ -z "$parts_json" ]]; then
+  echo "Chunk upload failed — aborting upload ${uuid}" >&2
+  abort_upload "$uuid" "$(mktemp)" || true
+  exit 1
+fi
+echo "All chunks uploaded."
+
+# --- Finish upload ---
+echo "Finishing upload..."
+tmp_finish="$(mktemp)"
+finish_status="$(finish_upload "$uuid" "$parts_json" "$tmp_finish")"
+
+if [[ -z "$finish_status" || "$finish_status" -lt 200 || "$finish_status" -ge 300 ]]; then
+  echo "Finish upload failed (HTTP ${finish_status})" >&2
+  cat "$tmp_finish" >&2 2>/dev/null || true
+  abort_upload "$uuid" "$(mktemp)" || true
+  rm -f "$tmp_finish"
+  exit 1
+fi
+rm -f "$tmp_finish"
+echo "Upload finished successfully."
+
+# --- Submit (publish) ---
+echo "Submitting package..."
+categories_json="$(jq -r '.thunderstore.categories // ["Mods"]' <<<"$mod_json")"
+tmp_submit="$(mktemp)"
+submit_status="$(submit_package "$uuid" "$namespace" "$community" "$categories_json" "$has_nsfw" "$tmp_submit")"
+
+if [[ -z "$submit_status" || "$submit_status" -lt 200 || "$submit_status" -ge 300 ]]; then
+  echo "Submit failed (HTTP ${submit_status})" >&2
+  cat "$tmp_submit" >&2 2>/dev/null || true
+  rm -f "$tmp_submit"
+  exit 1
+fi
+rm -f "$tmp_submit"
+
+package_url="${API_BASE}/package/${namespace}/${name}/${VERSION}/"
+echo ""
+echo "Published: ${package_url}"
+
+# --- GitHub Actions outputs ---
+if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+  {
+    echo "published=true"
+    echo "package_url=${package_url}"
+    echo "uuid=${uuid}"
+    echo "namespace=${namespace}"
+    echo "name=${name}"
+    echo "version=${VERSION}"
+    echo "mod_key=${MOD_KEY}"
+  } >> "$GITHUB_OUTPUT"
+fi
+
+if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+  {
+    echo "## Publish Summary"
+    echo ""
+    echo "| Field | Value |"
+    echo "|-------|-------|"
+    echo "| mod_key | ${MOD_KEY} |"
+    echo "| name | ${name} |"
+    echo "| version | ${VERSION} |"
+    echo "| namespace | ${namespace} |"
+    echo "| community | ${community} |"
+    echo "| url | [${package_url}](${package_url}) |"
+    echo "| uuid | ${uuid} |"
+  } >> "$GITHUB_STEP_SUMMARY"
+fi
