@@ -363,7 +363,9 @@ echo "Upload UUID: ${uuid}"
 parts_json="$(upload_chunks "$PACKAGE_ZIP" "$upload_urls_json" "$uuid")"
 if [[ -z "$parts_json" ]]; then
   echo "Chunk upload failed — aborting upload ${uuid}" >&2
-  abort_upload "$uuid" "$(mktemp)" || true
+  tmp_abort="$(mktemp)"
+  abort_upload "$uuid" "$tmp_abort" || true
+  rm -f "$tmp_abort"
   exit 1
 fi
 echo "All chunks uploaded."
@@ -376,8 +378,9 @@ finish_status="$(finish_upload "$uuid" "$parts_json" "$tmp_finish")"
 if [[ -z "$finish_status" || "$finish_status" -lt 200 || "$finish_status" -ge 300 ]]; then
   echo "Finish upload failed (HTTP ${finish_status})" >&2
   cat "$tmp_finish" >&2 2>/dev/null || true
-  abort_upload "$uuid" "$(mktemp)" || true
-  rm -f "$tmp_finish"
+  tmp_abort="$(mktemp)"
+  abort_upload "$uuid" "$tmp_abort" || true
+  rm -f "$tmp_abort" "$tmp_finish"
   exit 1
 fi
 rm -f "$tmp_finish"
