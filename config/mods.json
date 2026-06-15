@@ -2,7 +2,7 @@
     "mods": [
         {
             "key": "igpu-savior",
-            "enabled": true,
+            "enabled": false,
             "source": {
                 "owner": "Small-tailqwq",
                 "repo": "iGPUSaviorMod"
@@ -88,7 +88,7 @@
         },
         {
             "key": "aichat",
-            "enabled": true,
+            "enabled": false,
             "source": {
                 "owner": "qzrs777",
                 "repo": "AIChat"
