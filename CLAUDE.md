@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A CI pipeline that converts mod GitHub Release assets into validated Thunderstore packages. It does NOT contain any game or mod code — only scripts, configs, templates, and GitHub Actions workflows for automating the `Release → Thunderstore` conversion.
 
-## Architecture: Two-Phase Pipeline
+## Architecture: Three-Phase Pipeline
 
 ```
 GitHub Release (source repo)
@@ -27,6 +27,13 @@ Phase 2: scripts/build_package.sh
         │
         ├── scripts/rewrite_readme_links.py   (README link rewriting)
         └── scripts/validate_thunderstore.sh  (calls Thunderstore validate API)
+
+Phase 3: scripts/publish_thunderstore.sh
+        │  Downloads pre-built/validated package artifact
+        │  Generates thunderstore.toml from mods.json
+        │  Uploads via Thunderstore usermedia API (initiate → chunks → finish → submit)
+        │
+        └── .github/workflows/publish-thunderstore.yml  (triggers: workflow_dispatch, repository_dispatch)
 ```
 
 ## Repository Structure
@@ -37,6 +44,7 @@ scripts/
   sync_release_assets.sh      # Phase 1: download & extract release assets → assets branch
   build_package.sh            # Phase 2: assemble zip from assets branch
   validate_thunderstore.sh    # Phase 2: validate manifest/readme/icon via Thunderstore API
+  publish_thunderstore.sh      # Phase 3: upload validated package to Thunderstore
   validate_mods_config.sh     # Validates mods.json schema, called by all other scripts
   rewrite_readme_links.py     # Converts relative links in README to absolute GitHub URLs
 templates/<mod_key>/          # Fallback README.md + icon.png per mod
@@ -46,6 +54,7 @@ build/                        # .gitignored — local/output artifacts
 .github/workflows/
   sync-release-assets.yml     # Triggers: workflow_dispatch, repository_dispatch, cron (hourly)
   build-and-validate-thunderstore.yml  # Triggers: workflow_dispatch, repository_dispatch
+  publish-thunderstore.yml     # Triggers: workflow_dispatch, repository_dispatch
 ```
 
 ## Running Scripts Locally
@@ -77,6 +86,17 @@ THUNDERSTORE_AUTH_TOKEN=<token> bash scripts/validate_thunderstore.sh \
   --icon build/packages/.../icon.png \
   --namespace Small_tailqwq
 
+# Publish a pre-built package to Thunderstore (dry-run by default)
+THUNDERSTORE_AUTH_TOKEN=<token> bash scripts/publish_thunderstore.sh \
+  --mod-key realtime-weather --version 1.0.0 \
+  --package-zip build/packages/realtime-weather/1.0.0/Small_tailqwq-RealTimeWeather-1.0.0.zip \
+  --dry-run
+
+# Actually publish (omit --dry-run)
+THUNDERSTORE_AUTH_TOKEN=<token> bash scripts/publish_thunderstore.sh \
+  --mod-key realtime-weather --version 1.0.0 \
+  --package-zip build/packages/realtime-weather/1.0.0/Small_tailqwq-RealTimeWeather-1.0.0.zip
+
 # Rewrite relative links in a README
 python3 scripts/rewrite_readme_links.py \
   --input README.md --output fixed.md \
@@ -84,12 +104,13 @@ python3 scripts/rewrite_readme_links.py \
   --readme-path README.md
 ```
 
-**Dependencies:** All scripts require `jq`, `curl`, `git`. Additionally: `build_package.sh` requires `zip` and `python3`; `scripts/sync_release_assets.sh` requires `unzip`.
+**Dependencies:** All scripts require `jq`, `curl`, `git`. Additionally: `build_package.sh` requires `zip` and `python3`; `scripts/sync_release_assets.sh` requires `unzip`; `publish_thunderstore.sh` requires `unzip` (for reading manifest.json from zip).
 
 ## Key Design Decisions
 
 - **Separate branches for assets**: Each `assets/<mod_key>` branch is the stable store of downloaded release content. Scripts refuse to overwrite an existing version directory — prevent accidental mutation.
-- **No auto-publish**: The pipeline currently stops at validation. Manual or future workflow steps would handle publishing to Thunderstore.
+- **No auto-publish (manual gate)**: Phase 3 must be triggered explicitly. When triggered from `workflow_dispatch`, `dry_run` defaults to `true`. Only `repository_dispatch` from a successful Phase 2 run sets `dry_run=false` automatically, creating a controlled publish path.
+- **Publish dependencies:** `publish_thunderstore.sh` requires `jq`, `curl`, `unzip` (same as build_package.sh minus `zip`, `git`, `python3`).
 - **Token naming convention**: Thunderstore API tokens are stored as GitHub Secrets named `{NAMESPACE_UPPER_WITH_UNDERSCORE}_THUNDER_TOKEN` (e.g., `SMALL_TAILQWQ_THUNDER_TOKEN`). The `build_package.sh` script computes this key from `thunderstore.namespace` via `tr '[:lower:]-' '[:upper:]_'`.
 - **Readme fallback on sync failure**: If `sync_with_source_readme` is true but the source fetch fails, the build falls back to `templates/<mod_key>/README.md` instead of failing.
 - **`website_url` points to source repo**: The manifest's `website_url` field is set to `https://github.com/${owner}/${repo}` (the mod's own source repo), not this pipeline repo.
