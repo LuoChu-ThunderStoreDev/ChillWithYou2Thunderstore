@@ -58,6 +58,67 @@ TOML
   echo "$toml_path"
 }
 
+post_json() {
+  local endpoint="$1"
+  local body="$2"
+  local out_file="$3"
+  local headers=(-H "Content-Type: application/json")
+  if [[ -n "$AUTH_TOKEN" ]]; then
+    headers+=(-H "Authorization: ${AUTH_SCHEME} ${AUTH_TOKEN}")
+  fi
+  curl -sS -o "$out_file" -w "%{http_code}" "${headers[@]}" -X POST "${API_BASE}${endpoint}" -d "$body"
+}
+
+initiate_upload() {
+  local pkg_name="$1"
+  local file_size="$2"
+  local out_file="$3"
+
+  local body
+  body="$(jq -n --arg name "$pkg_name" --argjson size "$file_size" '{name:$name, size:$size}')"
+  post_json "/api/experimental/usermedia/initiate-upload/" "$body" "$out_file"
+}
+
+finish_upload() {
+  local uuid="$1"
+  local parts_json="$2"
+  local out_file="$3"
+
+  local body
+  body="$(jq -n --argjson parts "$parts_json" '{parts:$parts}')"
+  post_json "/api/experimental/usermedia/${uuid}/finish-upload/" "$body" "$out_file"
+}
+
+abort_upload() {
+  local uuid="$1"
+  local out_file="$2"
+  post_json "/api/experimental/usermedia/${uuid}/abort-upload/" "{}" "$out_file"
+}
+
+submit_package() {
+  local uuid="$1"
+  local author_name="$2"
+  local community_slug="$3"
+  local categories_json="$4"
+  local has_nsfw="$5"
+  local out_file="$6"
+
+  local community_categories_json="null"
+  if [[ -n "$community_slug" && "$categories_json" != "[]" ]]; then
+    community_categories_json="$(jq -n --arg slug "$community_slug" --argjson cats "$categories_json" '{(.slug): $cats}')"
+  fi
+
+  local body
+  body="$(jq -n \
+    --arg author "$author_name" \
+    --arg community "$community_slug" \
+    --argjson nsflag "$has_nsfw" \
+    --argjson categories "$categories_json" \
+    --argjson ccats "$community_categories_json" \
+    '{author_name:$author, communities:[$community], categories:$categories, community_categories:$ccats, has_nsfw_content:$nsflag}')"
+  post_json "/api/experimental/usermedia/${uuid}/submit/" "$body" "$out_file"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --config)
