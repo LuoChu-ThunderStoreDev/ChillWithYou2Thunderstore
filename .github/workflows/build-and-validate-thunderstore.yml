@@ -176,7 +176,7 @@ jobs:
             build/validation/raw/*.stderr
 
       - name: Dispatch publish event
-        if: steps.validate.outputs.validation_warning != 'true'
+        if: success() && steps.validate.outputs.validation_warning != 'true'
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ github.token }}
