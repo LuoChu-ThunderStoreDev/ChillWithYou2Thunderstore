@@ -18,7 +18,7 @@ jobs:
   build-validate:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout
@@ -174,3 +174,16 @@ jobs:
             build/validation/*.json
             build/validation/raw/*.body
             build/validation/raw/*.stderr
+
+      - name: Dispatch publish event
+        if: steps.validate.outputs.validation_warning != 'true'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ github.token }}
+          event-type: publish-thunderstore
+          client-payload: |
+            {
+              "mod_key": "${{ steps.build.outputs.mod_key }}",
+              "version": "${{ steps.build.outputs.version }}",
+              "run_id": "${{ github.run_id }}"
+            }
