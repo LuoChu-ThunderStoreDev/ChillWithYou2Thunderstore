@@ -28,16 +28,20 @@ generate_thunderstore_toml() {
 
   # Convert dependencies JSON array to TOML array of strings
   local deps_toml=""
-  deps_toml="$(jq -r '.[]' <<<"$deps_json" | sed 's/^/    "/' | sed 's/$/",/')"
+  deps_toml="$(jq -r '.[]? // empty' <<<"$deps_json" | sed 's/^/    "/' | sed 's/$/",/')"
   # Remove trailing comma from last line
   deps_toml="${deps_toml%,}"
+
+  # Escape backslashes and double quotes in description for TOML string
+  local desc_escaped="${description//\\/\\\\}"
+  desc_escaped="${desc_escaped//\"/\\\"}"
 
   cat > "$toml_path" <<TOML
 [package]
 namespace = "${namespace}"
 name = "${name}"
 versionNumber = "${VERSION}"
-description = "${description}"
+description = "${desc_escaped}"
 websiteUrl = "https://github.com/${owner}/${repo}"
 containsNsfwContent = ${has_nsfw}
 
