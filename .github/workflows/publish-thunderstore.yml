@@ -124,11 +124,11 @@ jobs:
           echo "Downloading artifact from run ${RUN_ID}..."
           gh run download "$RUN_ID" \
             --repo "${{ github.repository }}" \
-            --name "package-${MOD_KEY}-*" \
+            --pattern "package-${MOD_KEY}-*" \
             --dir build/packages/downloaded 2>&1 || {
             echo "Failed to download artifact. Check that:" >&2
             echo "  1. The run ID ${RUN_ID} exists" >&2
-            echo "  2. The artifact 'package-${MOD_KEY}-*' was uploaded by that run" >&2
+            echo "  2. An artifact matching 'package-${MOD_KEY}-*' was uploaded by that run" >&2
             echo "  3. The artifact has not expired" >&2
             exit 1
           }
