@@ -129,7 +129,9 @@ if ! git ls-tree -r --name-only "origin/${branch}" "$asset_prefix" | grep -q .; 
 fi
 
 tmp_dir="$(mktemp -d)"
-trap 'rm -rf "$tmp_dir"' EXIT
+if [[ -z "${GITHUB_OUTPUT:-}" ]]; then
+  trap 'rm -rf "$tmp_dir"' EXIT
+fi
 
 content_dir="${tmp_dir}/content"
 mkdir -p "$content_dir"
