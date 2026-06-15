@@ -125,6 +125,7 @@ jobs:
           TAG: ${{ steps.resolve.outputs.tag }}
           RUN_ALL: ${{ steps.resolve.outputs.run_all }}
           DRY_RUN_VAL: ${{ steps.resolve.outputs.dry_run }}
+          SYNC_SUMMARY_FILE: /tmp/sync_summary.jsonl
         run: |
           set -euo pipefail
 
@@ -164,3 +165,30 @@ jobs:
             echo "- dry_run: ${{ steps.resolve.outputs.dry_run }}"
             echo "- status: ${{ job.status }}"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dispatch build-validate for each synced mod
+        if: steps.resolve.outputs.dry_run != 'true' && success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          SYNC_FILE="/tmp/sync_summary.jsonl"
+          if [[ ! -f "$SYNC_FILE" ]]; then
+            echo "No sync summary file, skipping dispatch."
+            exit 0
+          fi
+          while IFS= read -r entry; do
+            MOD_KEY="$(echo "$entry" | jq -r '.mod_key')"
+            VERSION="$(echo "$entry" | jq -r '.version')"
+            echo "Dispatch build-validate: ${MOD_KEY}@${VERSION}"
+            curl -fsSL \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${{ github.repository }}/dispatches" \
+              -d "$(jq -n \
+                --arg event_type build-validate-thunderstore \
+                --arg mod_key "$MOD_KEY" \
+                --arg version "$VERSION" \
+                '{event_type:$event_type, client_payload:{mod_key:$mod_key, version:$version}}')"
+          done < "$SYNC_FILE"

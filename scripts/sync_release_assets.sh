@@ -294,6 +294,12 @@ push_to_assets_branch() {
 
     git commit -m "sync(${mod_key}): ${version} from ${source_repo}@${source_tag}" >/dev/null
     git push origin "$branch" >/dev/null
+
+    # Record synced mod for downstream workflow dispatch
+    if [[ -n "${SYNC_SUMMARY_FILE:-}" ]]; then
+      mkdir -p "$(dirname "$SYNC_SUMMARY_FILE")"
+      echo "{\"mod_key\":\"${mod_key}\",\"version\":\"${version}\"}" >> "$SYNC_SUMMARY_FILE"
+    fi
   )
 
   git worktree remove "$worktree_dir" --force >/dev/null
