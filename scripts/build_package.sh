@@ -139,7 +139,7 @@ cp -R "${tmp_dir}/${asset_prefix}"/. "$content_dir"/
 namespace="$(jq -r '.thunderstore.namespace' <<<"$mod_json")"
 token_key="$(echo "$namespace" | tr '[:lower:]-' '[:upper:]_')_THUNDER_TOKEN"
 name="$(jq -r '.thunderstore.name' <<<"$mod_json")"
-description="$(jq -r '.thunderstore.description' <<<"$mod_json" | cut -c1-256)"
+description="$(jq -r '.thunderstore.description[0:256]' <<<"$mod_json")"
 owner="$(jq -r '.source.owner' <<<"$mod_json")"
 repo="$(jq -r '.source.repo' <<<"$mod_json")"
 readme_path="${ROOT_DIR}/$(jq -r '.package_files.readme' <<<"$mod_json")"
@@ -181,7 +181,7 @@ fi
 jq -n \
   --arg name "$name" \
   --arg version "$VERSION" \
-  --arg website "https://github.com/${GITHUB_REPOSITORY:-gongfuture/ChillWithYou2Thunderstore}" \
+  --arg website "https://github.com/${owner}/${repo}" \
   --arg desc "$description" \
   --argjson deps "$(jq -c '.thunderstore.dependencies' <<<"$mod_json")" \
   '{name:$name, version_number:$version, website_url:$website, description:$desc, dependencies:$deps}' > "$manifest_path"

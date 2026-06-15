@@ -129,8 +129,7 @@ if [[ -z "$NAMESPACE" ]]; then
 fi
 
 if [[ -n "$AUTH_TOKEN" ]]; then
-  # Let GitHub Actions mask token value if it ever appears in logs.
-  echo "::add-mask::${AUTH_TOKEN}"
+  :
 fi
 
 manifest_data="$(base64 -w0 "$MANIFEST_PATH" | jq -R .)"
