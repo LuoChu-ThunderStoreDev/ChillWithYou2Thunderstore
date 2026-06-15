@@ -105,7 +105,7 @@ submit_package() {
 
   local community_categories_json="null"
   if [[ -n "$community_slug" && "$categories_json" != "[]" ]]; then
-    community_categories_json="$(jq -n --arg slug "$community_slug" --argjson cats "$categories_json" '{(.slug): $cats}')"
+    community_categories_json="$(jq -n --arg slug "$community_slug" --argjson cats "$categories_json" '{($slug): $cats}')"
   fi
 
   local body
