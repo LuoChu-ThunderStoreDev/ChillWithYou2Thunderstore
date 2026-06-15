@@ -58,6 +58,7 @@ done
 
 need_cmd jq
 need_cmd curl
+need_cmd unzip
 
 if [[ -z "$MOD_KEY" ]]; then
   echo "--mod-key is required" >&2
