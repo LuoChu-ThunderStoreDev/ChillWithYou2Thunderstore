@@ -119,6 +119,77 @@ submit_package() {
   post_json "/api/experimental/usermedia/${uuid}/submit/" "$body" "$out_file"
 }
 
+upload_chunks() {
+  local zip_path="$1"
+  local upload_urls_json="$2"
+  local uuid="$3"
+
+  local chunks_count
+  chunks_count="$(jq 'length' <<<"$upload_urls_json")"
+  echo "Uploading ${chunks_count} chunk(s)..."
+
+  local parts_json="["
+  local idx=0
+  while [[ $idx -lt $chunks_count ]]; do
+    local url offset length part_num
+    url="$(jq -r ".[$idx].url" <<<"$upload_urls_json")"
+    offset="$(jq -r ".[$idx].offset" <<<"$upload_urls_json")"
+    length="$(jq -r ".[$idx].length" <<<"$upload_urls_json")"
+    part_num="$(jq -r ".[$idx].number" <<<"$upload_urls_json")"
+
+    echo "  Chunk ${part_num}/${chunks_count}: offset=${offset} length=${length}"
+
+    # Extract the chunk bytes from the zip
+    local temp_chunk
+    temp_chunk="$(mktemp)"
+    dd if="$zip_path" bs=1 skip="$offset" count="$length" of="$temp_chunk" 2>/dev/null
+
+    # 3 retries with exponential backoff
+    local retry=0
+    local etag=""
+    while [[ $retry -lt 3 ]]; do
+      local response_headers
+      response_headers="$(mktemp)"
+      local http_status
+      http_status="$(curl -sS -o /dev/null -w "%{http_code}" -D "$response_headers" -X PUT -T "$temp_chunk" "$url" 2>/dev/null)"
+      local curl_exit=$?
+
+      if [[ $curl_exit -eq 0 && "$http_status" -ge 200 && "$http_status" -lt 300 ]]; then
+        etag="$(grep -i '^etag:' "$response_headers" | sed 's/^[Ee][Tt][Aa][Gg]:[[:space:]]*//' | tr -d '\r\n')"
+        rm -f "$response_headers"
+        if [[ -n "$etag" ]]; then
+          break
+        fi
+      fi
+
+      rm -f "$response_headers"
+      retry=$((retry + 1))
+      if [[ $retry -lt 3 ]]; then
+        local wait_sec=$((2 ** retry))
+        echo "    Retry ${retry}/3 after ${wait_sec}s..."
+        sleep "$wait_sec"
+      fi
+    done
+
+    rm -f "$temp_chunk"
+
+    if [[ -z "$etag" ]]; then
+      echo "Failed to upload chunk ${part_num} after 3 retries — aborting" >&2
+      return 1
+    fi
+
+    if [[ $idx -gt 0 ]]; then
+      parts_json+=","
+    fi
+    parts_json+="$(jq -n --arg tag "$etag" --argjson num "$part_num" '{tag:$tag, number:$num}')"
+
+    idx=$((idx + 1))
+  done
+  parts_json+="]"
+
+  echo "$parts_json"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --config)
