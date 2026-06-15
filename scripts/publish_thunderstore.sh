@@ -81,3 +81,52 @@ fi
 
 # Validate config before proceeding
 bash "${ROOT_DIR}/scripts/validate_mods_config.sh" --config "$CONFIG_PATH"
+
+# --- Look up mod in config ---
+mod_json="$(jq -c --arg k "$MOD_KEY" '.mods[] | select(.key == $k and .enabled == true)' "$CONFIG_PATH")"
+if [[ -z "$mod_json" ]]; then
+  echo "Mod key not found or disabled: $MOD_KEY" >&2
+  exit 1
+fi
+
+# --- Resolve version if not provided ---
+if [[ -z "$VERSION" ]]; then
+  VERSION="$(jq -r '.version_number' <(unzip -p "$PACKAGE_ZIP" manifest.json) 2>/dev/null || echo "")"
+  if [[ -z "$VERSION" ]]; then
+    echo "Could not resolve version from package manifest. Pass --version explicitly." >&2
+    exit 1
+  fi
+fi
+
+# --- Extract config values ---
+namespace="$(jq -r '.thunderstore.namespace' <<<"$mod_json")"
+token_key="$(echo "$namespace" | tr '[:lower:]-' '[:upper:]_')_THUNDER_TOKEN"
+name="$(jq -r '.thunderstore.name' <<<"$mod_json")"
+description="$(jq -r '.thunderstore.description[0:256]' <<<"$mod_json")"
+owner="$(jq -r '.source.owner' <<<"$mod_json")"
+repo="$(jq -r '.source.repo' <<<"$mod_json")"
+community="$(jq -r '.thunderstore.community' <<<"$mod_json")"
+has_nsfw="$(jq -r '.thunderstore.has_nsfw_content // false' <<<"$mod_json")"
+deps_json="$(jq -c '.thunderstore.dependencies' <<<"$mod_json")"
+
+# --- Resolve auth token ---
+AUTH_TOKEN="${THUNDERSTORE_AUTH_TOKEN:-}"
+AUTH_SCHEME="${THUNDERSTORE_AUTH_SCHEME:-Bearer}"
+API_BASE="${THUNDERSTORE_API_BASE:-https://thunderstore.io}"
+
+if [[ -z "$AUTH_TOKEN" ]]; then
+  echo "THUNDERSTORE_AUTH_TOKEN is not set." >&2
+  echo "In CI, this should be injected from secrets.${token_key}" >&2
+  exit 1
+fi
+
+echo "::group::Publish Pre-flight"
+echo "  mod_key:     $MOD_KEY"
+echo "  name:        $name"
+echo "  version:     $VERSION"
+echo "  namespace:   $namespace"
+echo "  community:   $community"
+echo "  package_zip: $PACKAGE_ZIP"
+echo "  api_base:    $API_BASE"
+echo "  dry_run:     $DRY_RUN"
+echo "::endgroup::"
