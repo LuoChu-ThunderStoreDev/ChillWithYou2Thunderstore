@@ -57,12 +57,18 @@ mapfile -t keys < <(jq -r '.mods[].key' "$CONFIG_PATH")
 for key in "${keys[@]}"; do
   mod_json="$(jq -c --arg k "$key" '.mods[] | select(.key == $k)' "$CONFIG_PATH")"
 
-  for field in '.enabled' '.source.owner' '.source.repo' '.assets' '.thunderstore.namespace' '.thunderstore.name' '.thunderstore.description' '.thunderstore.dependencies' '.package_files.readme' '.package_files.icon'; do
+  for field in '.source.owner' '.source.repo' '.assets' '.thunderstore.namespace' '.thunderstore.name' '.thunderstore.description' '.thunderstore.dependencies' '.package_files.readme' '.package_files.icon'; do
     if ! jq -e "$field" <<<"$mod_json" >/dev/null; then
       echo "Invalid config for mod ${key}: missing ${field}" >&2
       exit 1
     fi
   done
+
+  # .enabled checked with has() because false is falsy in jq
+  if ! jq -e 'has("enabled")' <<<"$mod_json" >/dev/null; then
+    echo "Invalid config for mod ${key}: missing .enabled" >&2
+    exit 1
+  fi
 
   if ! jq -e '.assets | type == "array" and length > 0' <<<"$mod_json" >/dev/null; then
     echo "Invalid config for mod ${key}: .assets must be a non-empty array" >&2
