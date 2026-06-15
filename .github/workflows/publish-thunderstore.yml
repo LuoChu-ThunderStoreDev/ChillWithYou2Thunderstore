@@ -1,0 +1,183 @@
+name: Publish Thunderstore Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      mod_key:
+        description: Mod key from config/mods.json
+        required: true
+        type: string
+      version:
+        description: Optional version, defaults to reading from package manifest
+        required: false
+        type: string
+      artifact_run_id:
+        description: GitHub Actions run ID from build-and-validate workflow
+        required: true
+        type: string
+      dry_run:
+        description: Dry run (skip actual upload)
+        required: false
+        type: boolean
+        default: true
+  repository_dispatch:
+    types: [publish-thunderstore]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure executable scripts
+        run: chmod +x scripts/*.sh
+
+      - name: Resolve inputs
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_MOD_KEY: ${{ inputs.mod_key }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_RUN_ID: ${{ inputs.artifact_run_id }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          PAYLOAD_MOD_KEY: ${{ github.event.client_payload.mod_key }}
+          PAYLOAD_VERSION: ${{ github.event.client_payload.version }}
+          PAYLOAD_RUN_ID: ${{ github.event.client_payload.run_id }}
+        run: |
+          set -euo pipefail
+          MOD_KEY="${INPUT_MOD_KEY:-}"
+          VERSION="${INPUT_VERSION:-}"
+          RUN_ID="${INPUT_RUN_ID:-}"
+          DRY_RUN="${INPUT_DRY_RUN:-true}"
+
+          echo "::group::Incoming event payload"
+          echo "event=${EVENT_NAME}"
+          echo "input.mod_key=${INPUT_MOD_KEY:-}"
+          echo "input.version=${INPUT_VERSION:-}"
+          echo "input.artifact_run_id=${INPUT_RUN_ID:-}"
+          echo "input.dry_run=${INPUT_DRY_RUN:-}"
+          if [[ -n "${PAYLOAD_MOD_KEY:-}" ]]; then
+            echo "payload.mod_key=<provided>"
+          else
+            echo "payload.mod_key=<empty>"
+          fi
+          if [[ -n "${PAYLOAD_VERSION:-}" ]]; then
+            echo "payload.version=<provided>"
+          else
+            echo "payload.version=<empty>"
+          fi
+          if [[ -n "${PAYLOAD_RUN_ID:-}" ]]; then
+            echo "payload.run_id=<provided>"
+          else
+            echo "payload.run_id=<empty>"
+          fi
+          echo "::endgroup::"
+
+          if [[ "${EVENT_NAME}" == "repository_dispatch" ]]; then
+            if [[ -n "${PAYLOAD_MOD_KEY:-}" ]]; then MOD_KEY="${PAYLOAD_MOD_KEY}"; fi
+            if [[ -n "${PAYLOAD_VERSION:-}" ]]; then VERSION="${PAYLOAD_VERSION}"; fi
+            if [[ -n "${PAYLOAD_RUN_ID:-}" ]]; then RUN_ID="${PAYLOAD_RUN_ID}"; fi
+            # repository_dispatch: dry-run is false by default (explicit trigger)
+            DRY_RUN="false"
+          fi
+
+          if [[ -z "${MOD_KEY}" ]]; then
+            echo "mod_key is required" >&2
+            exit 1
+          fi
+          if [[ -z "${RUN_ID}" ]]; then
+            echo "artifact_run_id is required" >&2
+            exit 1
+          fi
+
+          {
+            echo "mod_key=${MOD_KEY}"
+            echo "version=${VERSION}"
+            echo "artifact_run_id=${RUN_ID}"
+            echo "dry_run=${DRY_RUN}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Print resolved inputs
+        run: |
+          set -euo pipefail
+          echo "mod_key=${{ steps.resolve.outputs.mod_key }}"
+          echo "version=${{ steps.resolve.outputs.version || '<from-manifest>' }}"
+          echo "artifact_run_id=${{ steps.resolve.outputs.artifact_run_id }}"
+          echo "dry_run=${{ steps.resolve.outputs.dry_run }}"
+
+      - name: Download package artifact
+        id: download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          RUN_ID="${{ steps.resolve.outputs.artifact_run_id }}"
+          MOD_KEY="${{ steps.resolve.outputs.mod_key }}"
+
+          mkdir -p build/packages
+
+          echo "Downloading artifact from run ${RUN_ID}..."
+          gh run download "$RUN_ID" \
+            --repo "${{ github.repository }}" \
+            --name "package-${MOD_KEY}-*" \
+            --dir build/packages/downloaded 2>&1 || {
+            echo "Failed to download artifact. Check that:" >&2
+            echo "  1. The run ID ${RUN_ID} exists" >&2
+            echo "  2. The artifact 'package-${MOD_KEY}-*' was uploaded by that run" >&2
+            echo "  3. The artifact has not expired" >&2
+            exit 1
+          }
+
+          # Find the downloaded zip
+          ZIP_PATH="$(find build/packages/downloaded -name '*.zip' -print -quit)"
+          if [[ -z "$ZIP_PATH" ]]; then
+            echo "No zip found in downloaded artifact" >&2
+            exit 1
+          fi
+          echo "artifact_zip=${ZIP_PATH}" >> "$GITHUB_OUTPUT"
+
+      - name: Look up token secret name
+        id: token-key
+        run: |
+          set -euo pipefail
+          MOD_KEY="${{ steps.resolve.outputs.mod_key }}"
+          CONFIG="config/mods.json"
+
+          NAMESPACE="$(jq -r --arg k "$MOD_KEY" '.mods[] | select(.key == $k) | .thunderstore.namespace' "$CONFIG")"
+          TOKEN_KEY="$(echo "$NAMESPACE" | tr '[:lower:]-' '[:upper:]_')_THUNDER_TOKEN"
+          echo "namespace=${NAMESPACE}" >> "$GITHUB_OUTPUT"
+          echo "token_key=${TOKEN_KEY}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish package
+        id: publish
+        env:
+          THUNDERSTORE_AUTH_TOKEN: ${{ secrets[steps.token-key.outputs.token_key] }}
+          THUNDERSTORE_AUTH_SCHEME: ${{ vars.THUNDERSTORE_AUTH_SCHEME }}
+        run: |
+          set -euo pipefail
+          ARGS=(--config config/mods.json --mod-key "${{ steps.resolve.outputs.mod_key }}")
+          if [[ -n "${{ steps.resolve.outputs.version }}" ]]; then
+            ARGS+=(--version "${{ steps.resolve.outputs.version }}")
+          fi
+          ARGS+=(--package-zip "${{ steps.download.outputs.artifact_zip }}")
+          if [[ "${{ steps.resolve.outputs.dry_run }}" == "true" ]]; then
+            ARGS+=(--dry-run)
+          fi
+
+          echo "::group::Publish arguments"
+          printf 'ARG %q\n' "${ARGS[@]}"
+          echo "::endgroup::"
+
+          ./scripts/publish_thunderstore.sh "${ARGS[@]}"
+
+      - name: Print publish outputs
+        run: |
+          set -euo pipefail
+          echo "published=${{ steps.publish.outputs.published }}"
+          echo "package_url=${{ steps.publish.outputs.package_url }}"
+          echo "uuid=${{ steps.publish.outputs.uuid }}"
