@@ -22,6 +22,38 @@ need_cmd() {
   }
 }
 
+generate_thunderstore_toml() {
+  local out_dir="$1"
+  local toml_path="${out_dir}/thunderstore.toml"
+
+  # Convert dependencies JSON array to TOML array of strings
+  local deps_toml=""
+  deps_toml="$(jq -r '.[]' <<<"$deps_json" | sed 's/^/    "/' | sed 's/$/",/')"
+  # Remove trailing comma from last line
+  deps_toml="${deps_toml%,}"
+
+  cat > "$toml_path" <<TOML
+[package]
+namespace = "${namespace}"
+name = "${name}"
+versionNumber = "${VERSION}"
+description = "${description}"
+websiteUrl = "https://github.com/${owner}/${repo}"
+containsNsfwContent = ${has_nsfw}
+
+[dependencies]
+packages = [
+${deps_toml}
+]
+
+[build]
+icon = "icon.png"
+readme = "README.md"
+TOML
+
+  echo "$toml_path"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --config)
@@ -131,3 +163,13 @@ echo "  package_zip: $PACKAGE_ZIP"
 echo "  api_base:    $API_BASE"
 echo "  dry_run:     $DRY_RUN"
 echo "::endgroup::"
+
+# --- Generate thunderstore.toml ---
+toml_dir="$(mktemp -d)"
+if [[ -z "${GITHUB_OUTPUT:-}" ]]; then
+  trap 'rm -rf "$toml_dir"' EXIT
+fi
+
+toml_path="$(generate_thunderstore_toml "$toml_dir")"
+echo "Generated thunderstore.toml:"
+cat "$toml_path"
