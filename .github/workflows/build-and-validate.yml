@@ -46,9 +46,11 @@ jobs:
       validation_warning: ${{ steps.validate.outputs.validation_warning }}
 
     steps:
-      - uses: ./.github/actions/setup
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: "0"
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
 
       - name: Build package
         id: build

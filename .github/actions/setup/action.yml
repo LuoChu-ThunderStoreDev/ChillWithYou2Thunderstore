@@ -1,24 +1,15 @@
 name: Setup Pipeline
-description: Checkout, install Python with uv cache, install dependencies
+description: Install Python with uv cache, install dependencies
 
 inputs:
   python-version:
     description: Python version
     required: false
     default: "3.12"
-  fetch-depth:
-    description: Git fetch depth (0 for full history)
-    required: false
-    default: "1"
 
 runs:
   using: composite
   steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: ${{ inputs.fetch-depth }}
-
     - name: Setup uv
       uses: astral-sh/setup-uv@v5
       with:
