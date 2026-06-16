@@ -1,0 +1,103 @@
+name: Publish Thunderstore Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      mod_key:
+        description: Mod key from config/mods.json
+        required: true
+        type: string
+      version:
+        description: Optional version, defaults to reading from package manifest
+        required: false
+        type: string
+      artifact_run_id:
+        description: GitHub Actions run ID from build-and-validate workflow
+        required: true
+        type: string
+      dry_run:
+        description: Dry run (skip actual upload)
+        required: false
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      mod_key:
+        type: string
+        required: true
+      version:
+        type: string
+        default: ""
+      artifact_run_id:
+        type: string
+        required: true
+      dry_run:
+        type: boolean
+        default: false
+
+concurrency:
+  group: publish-${{ inputs.mod_key }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - run: uv sync --frozen
+
+      - name: Download package artifact
+        id: download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p build/packages/downloaded
+          gh run download "${{ inputs.artifact_run_id }}" \
+            --repo "${{ github.repository }}" \
+            --pattern "package-${{ inputs.mod_key }}-*" \
+            --dir build/packages/downloaded
+          ZIP_PATH=$(find build/packages/downloaded -name '*.zip' -print -quit)
+          if [[ -z "$ZIP_PATH" ]]; then
+            echo "No zip found in downloaded artifact" >&2
+            exit 1
+          fi
+          echo "artifact_zip=${ZIP_PATH}" >> "$GITHUB_OUTPUT"
+
+      - name: Look up token key
+        id: token-key
+        run: |
+          uv run python -c "
+          from thunderstore_pipeline.config import load_config
+          import os
+          cfg = load_config()
+          for m in cfg.mods:
+              if m.key == '${{ inputs.mod_key }}':
+                  ns = m.thunderstore.namespace
+                  tk = ns.upper().replace('-', '_') + '_THUNDER_TOKEN'
+                  with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                      f.write(f'namespace={ns}\n')
+                      f.write(f'token_key={tk}\n')
+                  break
+          "
+
+      - name: Publish package
+        id: publish
+        env:
+          THUNDERSTORE_AUTH_TOKEN: ${{ secrets[steps.token-key.outputs.token_key] }}
+          THUNDERSTORE_AUTH_SCHEME: ${{ vars.THUNDERSTORE_AUTH_SCHEME }}
+        run: |
+          uv run python -m thunderstore_pipeline publish \
+            --mod-key "${{ inputs.mod_key }}" \
+            ${{ inputs.version != '' && format('--version {0}', inputs.version) || '' }} \
+            --package-zip "${{ steps.download.outputs.artifact_zip }}" \
+            ${{ inputs.dry_run == 'true' && '--dry-run' || '' }}
