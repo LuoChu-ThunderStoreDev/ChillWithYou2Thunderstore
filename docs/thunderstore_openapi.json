@@ -1,0 +1,3524 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Thunderstore API",
+    "description": "Schema is automatically generated and not completely accurate.",
+    "contact": {
+      "name": "Discord",
+      "url": "https://discord.thunderstore.io/"
+    },
+    "version": "v1"
+  },
+  "host": "thunderstore.io",
+  "schemes": [
+    "https"
+  ],
+  "basePath": "/",
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "securityDefinitions": {
+    "Basic": {
+      "type": "basic"
+    }
+  },
+  "security": [
+    {
+      "Basic": []
+    }
+  ],
+  "paths": {
+    "/api/cyberstorm/community/{community_id}/": {
+      "get": {
+        "operationId": "api_cyberstorm_community_read",
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/CyberstormCommunity"
+            }
+          }
+        },
+        "tags": [
+          "api"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "community_id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/auth/complete/{provider}/": {
+      "post": {
+        "operationId": "experimental.auth.complete",
+        "description": "Complete OAuth login process initiated by a client.",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RequestBody"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/ResponseBody"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "provider",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/auth/delete/": {
+      "post": {
+        "operationId": "experimental.auth.delete",
+        "summary": "Drop provided session from database.",
+        "description": "The session is provided in Authorization header and is processed by\nUserSessionTokenAuthentication, which places the session key into\nrequest.auth.",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/auth/overwolf/login/": {
+      "post": {
+        "operationId": "experimental.auth.overwolf.login",
+        "summary": "Login user with information from Overwolf API using the received JWT",
+        "description": "Used by Thunderstore Mod Manager. Not to be confused with OAuth\nlogin process triggered from a browser.",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OwLoginRequestBody"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/OwLoginResponseBody"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/auth/validate/": {
+      "get": {
+        "operationId": "experimental.auth.validate",
+        "description": "Check that valid session key is provided in Authorization header.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Session is valid"
+          },
+          "401": {
+            "description": "Session key is missing, invalid, or expired"
+          }
+        },
+        "tags": [
+          "experimental"
+        ],
+        "deprecated": true
+      },
+      "parameters": []
+    },
+    "/api/experimental/community/": {
+      "get": {
+        "operationId": "api_experimental_community_list",
+        "description": "",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The pagination cursor value.",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "required": [
+                "results"
+              ],
+              "type": "object",
+              "properties": {
+                "next": {
+                  "type": "string",
+                  "format": "uri",
+                  "x-nullable": true
+                },
+                "previous": {
+                  "type": "string",
+                  "format": "uri",
+                  "x-nullable": true
+                },
+                "results": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/Community"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/community/{community}/category/": {
+      "get": {
+        "operationId": "api_experimental_community_category_list",
+        "description": "",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The pagination cursor value.",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "required": [
+                "results"
+              ],
+              "type": "object",
+              "properties": {
+                "next": {
+                  "type": "string",
+                  "format": "uri",
+                  "x-nullable": true
+                },
+                "previous": {
+                  "type": "string",
+                  "format": "uri",
+                  "x-nullable": true
+                },
+                "results": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/PackageCategory"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "community",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/current-community/": {
+      "get": {
+        "operationId": "experimental.community.current",
+        "description": "Fetch the Community of the queried domain",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/Community"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/current-user/": {
+      "get": {
+        "operationId": "api_experimental_current-user_list",
+        "description": "Gets information about the current user, such as rated packages and permissions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/current-user/permissions/team/{team_name}/": {
+      "get": {
+        "operationId": "current-user.permissions.team",
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/CurrentUserTeamPermissions"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "team_name",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/current-user/rated-packages/": {
+      "get": {
+        "operationId": "api_experimental_current-user_rated-packages_list",
+        "description": "Returns a list of rated packages for the current user, capped at 500 entries",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/frontend/c/{community_identifier}/p/{package_namespace}/{package_name}/": {
+      "get": {
+        "operationId": "experimental.frontend.community.package",
+        "description": "Return details about a single Package.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageDetailViewContent"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ],
+        "deprecated": true
+      },
+      "parameters": [
+        {
+          "name": "community_identifier",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "package_name",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "package_namespace",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/frontend/c/{community_identifier}/packages/": {
+      "get": {
+        "operationId": "experimental.frontend.community.packages",
+        "description": "Return paginated list of community's packages.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/CommunityPackageList"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ],
+        "deprecated": true
+      },
+      "parameters": [
+        {
+          "name": "community_identifier",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/frontend/frontpage/": {
+      "get": {
+        "operationId": "experimental.frontend.frontpage",
+        "description": "Return information required to render the site's front page.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/FrontPageContent"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ],
+        "deprecated": true
+      },
+      "parameters": []
+    },
+    "/api/experimental/frontend/render-markdown/": {
+      "post": {
+        "operationId": "experimental.frontend.render-markdown",
+        "description": "",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RenderMarkdownParams"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/RenderMarkdownResponse"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/legacyprofile/create/": {
+      "post": {
+        "operationId": "experimental.modpacks.legacyprofile.create",
+        "description": "",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "title": "content",
+              "type": "file"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/LegacyProfileCreateResponse"
+            }
+          }
+        },
+        "consumes": [],
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/legacyprofile/get/{key}/": {
+      "get": {
+        "operationId": "experimental.modpacks.legacyprofile.retrieve",
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "title": "content",
+              "type": "file"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "key",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/package-index/": {
+      "get": {
+        "operationId": "experimental.package-index",
+        "description": "Response is a stream of newline delimited JSON.\n\nDownload links are not included in the response. The client is expected to build them using the following pattern: https://thunderstore.io/package/download/{namespace}/{name}/{version_number}/",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/PackageIndexEntry"
+              }
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/package-listing/{id}/approve/": {
+      "post": {
+        "operationId": "experimental.package_listing.approve",
+        "description": "",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PackageListingApproveRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "A unique integer value identifying this package listing.",
+          "required": true,
+          "type": "integer"
+        }
+      ]
+    },
+    "/api/experimental/package-listing/{id}/reject/": {
+      "post": {
+        "operationId": "experimental.package_listing.reject",
+        "description": "",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PackageListingRejectRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageListingRejectRequest"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "A unique integer value identifying this package listing.",
+          "required": true,
+          "type": "integer"
+        }
+      ]
+    },
+    "/api/experimental/package-listing/{id}/report/": {
+      "post": {
+        "operationId": "experimental.package_listing.report",
+        "description": "",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PackageListingReportRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "A unique integer value identifying this package listing.",
+          "required": true,
+          "type": "integer"
+        }
+      ]
+    },
+    "/api/experimental/package-listing/{id}/update/": {
+      "post": {
+        "operationId": "experimental.package_listing.update",
+        "description": "",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PackageListingUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageListingUpdateResponse"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "A unique integer value identifying this package listing.",
+          "required": true,
+          "type": "integer"
+        }
+      ]
+    },
+    "/api/experimental/package/": {
+      "get": {
+        "operationId": "api_experimental_package_list",
+        "description": "Lists all available packages",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The pagination cursor value.",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "required": [
+                "results"
+              ],
+              "type": "object",
+              "properties": {
+                "next": {
+                  "type": "string",
+                  "format": "uri",
+                  "x-nullable": true
+                },
+                "previous": {
+                  "type": "string",
+                  "format": "uri",
+                  "x-nullable": true
+                },
+                "results": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/PackageExperimental"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ],
+        "deprecated": true
+      },
+      "parameters": []
+    },
+    "/api/experimental/package/wikis/": {
+      "get": {
+        "operationId": "experimental_package_wiki_list",
+        "summary": "List package wikis",
+        "description": "Fetch a bulk of package wikis at once. Supports querying by update time to accommodate local caching.",
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageWikiListResponse"
+            }
+          }
+        },
+        "tags": [
+          "wiki"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/package/{namespace}/{name}/": {
+      "get": {
+        "operationId": "experimental_package_read",
+        "description": "Get a single package",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageExperimental"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "namespace",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/package/{namespace}/{name}/wiki/": {
+      "get": {
+        "operationId": "experimental_package_wiki_read",
+        "summary": "Get a list of all wiki pages",
+        "description": "Returns an index of all the pages included in the wiki",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/Wiki"
+            }
+          }
+        },
+        "tags": [
+          "wiki"
+        ]
+      },
+      "post": {
+        "operationId": "experimental_package_wiki_write",
+        "summary": "Create or update a wiki page",
+        "description": "Creates a new wiki page if a submission is made without the ID field set. If the ID field is set, the respective page will be updated instead.",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/WikiPageUpsert"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/WikiPage"
+            }
+          }
+        },
+        "tags": [
+          "wiki"
+        ]
+      },
+      "delete": {
+        "operationId": "experimental_package_wiki_delete",
+        "summary": "Delete a wiki page",
+        "description": "Deletes a wiki page by page ID",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/WikiPageDelete"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "wiki"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "namespace",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/package/{namespace}/{name}/{version}/": {
+      "get": {
+        "operationId": "experimental_package_version_read",
+        "description": "Get a single package version",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageVersionExperimental"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "namespace",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "version",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/package/{namespace}/{name}/{version}/changelog/": {
+      "get": {
+        "operationId": "experimental_package_version_changelog_read",
+        "description": "Get a package verion's changelog",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/MarkdownResponse"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "namespace",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "version",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/package/{namespace}/{name}/{version}/readme/": {
+      "get": {
+        "operationId": "experimental_package_version_readme_read",
+        "description": "Get a package verion's readme",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/MarkdownResponse"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "namespace",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "version",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/schema/{channel}/": {
+      "post": {
+        "operationId": "experimental.schema.channel.update",
+        "description": "",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "title": "content",
+              "type": "file"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/SchemaChannelUpdateResponse"
+            }
+          }
+        },
+        "consumes": [],
+        "tags": [
+          "schema"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "channel",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/schema/{channel}/latest/": {
+      "get": {
+        "operationId": "experimental.schema.channel.retrieve",
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "title": "content",
+              "type": "file"
+            }
+          }
+        },
+        "tags": [
+          "schema"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "channel",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/submission/poll-async/{submission_id}/": {
+      "get": {
+        "operationId": "experimental.package.submit-async.poll",
+        "description": "Polls the status of an async package submission by its ID.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageSubmissionResult"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "submission_id",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/experimental/submission/submit-async/": {
+      "post": {
+        "operationId": "experimental.package.submit-async",
+        "description": "Submits a pre-uploaded package by upload uuid asynchronously.",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PackageSubmissionMetadata"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageSubmissionStatus"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/submission/submit/": {
+      "post": {
+        "operationId": "experimental.package.submit",
+        "description": "Submits a pre-uploaded package by upload uuid.",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PackageSubmissionMetadata"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageSubmissionResult"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/submission/upload/": {
+      "get": {
+        "operationId": "api_experimental_submission_upload_list",
+        "description": "Uploads a package. Requires multipart/form-data.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "tags": [
+          "experimental"
+        ],
+        "deprecated": true
+      },
+      "post": {
+        "operationId": "api_experimental_submission_upload_create",
+        "description": "Uploads a package. Requires multipart/form-data.",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "tags": [
+          "experimental"
+        ],
+        "deprecated": true
+      },
+      "parameters": []
+    },
+    "/api/experimental/submission/validate/icon/": {
+      "post": {
+        "operationId": "experimental.submission.validate.icon",
+        "description": "Validates a package icon.",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/IconValidatorParams"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/ValidatorResponse"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/submission/validate/manifest-v1/": {
+      "post": {
+        "operationId": "experimental.submission.validate.manifest-v1",
+        "description": "Validates a package manifest.",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ManifestV1ValidatorParams"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/ValidatorResponse"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/submission/validate/readme/": {
+      "post": {
+        "operationId": "experimental.submission.validate.readme",
+        "description": "Validates a package readme.",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ReadmeValidatorParams"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/ValidatorResponse"
+            }
+          }
+        },
+        "tags": [
+          "experimental"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/usermedia/initiate-upload/": {
+      "post": {
+        "operationId": "experimental.usermedia.initiate-upload",
+        "description": "",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserMediaInitiateUploadParams"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/UserMediaInitiateUploadResponse"
+            }
+          }
+        },
+        "tags": [
+          "usermedia"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/experimental/usermedia/{uuid}/abort-upload/": {
+      "post": {
+        "operationId": "experimental.usermedia.abort-upload",
+        "description": "",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/UserMedia"
+            }
+          }
+        },
+        "tags": [
+          "usermedia"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "uuid",
+          "in": "path",
+          "description": "A UUID string identifying this user media.",
+          "required": true,
+          "type": "string",
+          "format": "uuid"
+        }
+      ]
+    },
+    "/api/experimental/usermedia/{uuid}/finish-upload/": {
+      "post": {
+        "operationId": "experimental.usermedia.finish-upload",
+        "description": "",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UserMediaFinishUploadParams"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/UserMedia"
+            }
+          }
+        },
+        "tags": [
+          "usermedia"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "uuid",
+          "in": "path",
+          "description": "A UUID string identifying this user media.",
+          "required": true,
+          "type": "string",
+          "format": "uuid"
+        }
+      ]
+    },
+    "/api/experimental/wiki/page/{id}/": {
+      "get": {
+        "operationId": "experimental_wiki_page_read",
+        "summary": "Get a wiki page",
+        "description": "Returns a wiki page object",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/WikiPage"
+            }
+          }
+        },
+        "tags": [
+          "wiki"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "A unique integer value identifying this wiki page.",
+          "required": true,
+          "type": "integer"
+        }
+      ]
+    },
+    "/api/v1/bot/deprecate-mod/": {
+      "post": {
+        "operationId": "api_v1_bot_deprecate-mod_create",
+        "summary": "Deprecates a mod by its package name",
+        "description": "* Requires JWT authentication.\n* Only users with special permissions may use this action",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "consumes": [
+          "application/jwt"
+        ],
+        "tags": [
+          "v1"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/v1/current-user/info/": {
+      "get": {
+        "operationId": "api_v1_current-user_info_list",
+        "description": "Gets information about the current user, such as rated packages and permissions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "v1"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/v1/package-metrics/{namespace}/{name}/": {
+      "get": {
+        "operationId": "api_v1_package_metrics",
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageMetrics"
+            }
+          }
+        },
+        "tags": [
+          "v1"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "namespace",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/v1/package-metrics/{namespace}/{name}/{version}/": {
+      "get": {
+        "operationId": "api_v1_package_version_metrics",
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageVersionMetrics"
+            }
+          }
+        },
+        "tags": [
+          "v1"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "name",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "namespace",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "version",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/v1/package/": {
+      "get": {
+        "operationId": "api_v1_package_list",
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/PackageListing"
+              }
+            }
+          }
+        },
+        "tags": [
+          "v1"
+        ]
+      },
+      "parameters": []
+    },
+    "/api/v1/package/{uuid4}/": {
+      "get": {
+        "operationId": "api_v1_package_read",
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageListing"
+            }
+          }
+        },
+        "tags": [
+          "v1"
+        ],
+        "deprecated": true
+      },
+      "parameters": [
+        {
+          "name": "uuid4",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/api/v1/package/{uuid4}/rate/": {
+      "post": {
+        "operationId": "api_v1_package_rate",
+        "description": "",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PackageListing"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageListing"
+            }
+          }
+        },
+        "tags": [
+          "v1"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "uuid4",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/c/{community_identifier}/api/v1/package/": {
+      "get": {
+        "operationId": "c_api_v1_package_list",
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/PackageListing"
+              }
+            }
+          }
+        },
+        "tags": [
+          "v1"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "community_identifier",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/c/{community_identifier}/api/v1/package/{uuid4}/": {
+      "get": {
+        "operationId": "c_api_v1_package_read",
+        "description": "",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageListing"
+            }
+          }
+        },
+        "tags": [
+          "v1"
+        ],
+        "deprecated": true
+      },
+      "parameters": [
+        {
+          "name": "community_identifier",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "uuid4",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/c/{community_identifier}/api/v1/package/{uuid4}/rate/": {
+      "post": {
+        "operationId": "c_api_v1_package_rate",
+        "description": "",
+        "parameters": [
+          {
+            "name": "data",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PackageListing"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/PackageListing"
+            }
+          }
+        },
+        "tags": [
+          "v1"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "community_identifier",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "uuid4",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "CyberstormCommunity": {
+      "required": [
+        "name",
+        "identifier",
+        "datetime_created",
+        "has_mod_manager_support",
+        "is_listed"
+      ],
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "minLength": 1
+        },
+        "identifier": {
+          "title": "Identifier",
+          "type": "string",
+          "minLength": 1
+        },
+        "short_description": {
+          "title": "Short description",
+          "type": "string",
+          "x-nullable": true
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "x-nullable": true
+        },
+        "discord_url": {
+          "title": "Discord url",
+          "type": "string",
+          "x-nullable": true
+        },
+        "wiki_url": {
+          "title": "Wiki url",
+          "type": "string",
+          "x-nullable": true
+        },
+        "datetime_created": {
+          "title": "Datetime created",
+          "type": "string",
+          "format": "date-time"
+        },
+        "background_image_url": {
+          "title": "Background image url",
+          "type": "string",
+          "x-nullable": true
+        },
+        "hero_image_url": {
+          "title": "Hero image url",
+          "type": "string",
+          "x-nullable": true
+        },
+        "cover_image_url": {
+          "title": "Cover image url",
+          "type": "string",
+          "x-nullable": true
+        },
+        "icon_url": {
+          "title": "Icon url",
+          "type": "string",
+          "x-nullable": true
+        },
+        "community_icon_url": {
+          "title": "Community icon url",
+          "type": "string",
+          "x-nullable": true
+        },
+        "total_download_count": {
+          "title": "Total download count",
+          "type": "integer",
+          "readOnly": true
+        },
+        "total_package_count": {
+          "title": "Total package count",
+          "type": "integer",
+          "readOnly": true
+        },
+        "has_mod_manager_support": {
+          "title": "Has mod manager support",
+          "type": "boolean"
+        },
+        "is_listed": {
+          "title": "Is listed",
+          "type": "boolean"
+        }
+      }
+    },
+    "RequestBody": {
+      "required": [
+        "code",
+        "redirect_uri"
+      ],
+      "type": "object",
+      "properties": {
+        "code": {
+          "title": "Authorization code received from the provider when authentication flow was initiated on the client",
+          "type": "string",
+          "minLength": 1
+        },
+        "redirect_uri": {
+          "title": "Redirect URI used when the authentication flow was initiated on client",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "ResponseBody": {
+      "required": [
+        "email",
+        "session_id",
+        "username"
+      ],
+      "type": "object",
+      "properties": {
+        "email": {
+          "title": "Email",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "session_id": {
+          "title": "Session id",
+          "type": "string",
+          "minLength": 1
+        },
+        "username": {
+          "title": "Username",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "OwLoginRequestBody": {
+      "required": [
+        "jwt"
+      ],
+      "type": "object",
+      "properties": {
+        "jwt": {
+          "title": "Authorization token",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "SocialAuthConnection": {
+      "required": [
+        "provider",
+        "username",
+        "avatar"
+      ],
+      "type": "object",
+      "properties": {
+        "provider": {
+          "title": "Provider",
+          "type": "string",
+          "minLength": 1
+        },
+        "username": {
+          "title": "Username",
+          "type": "string",
+          "minLength": 1
+        },
+        "avatar": {
+          "title": "Avatar",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "SubscriptionStatus": {
+      "required": [
+        "expires"
+      ],
+      "type": "object",
+      "properties": {
+        "expires": {
+          "title": "Expires",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "UserTeam": {
+      "required": [
+        "name",
+        "role",
+        "member_count"
+      ],
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "title": "Role",
+          "type": "string",
+          "minLength": 1
+        },
+        "member_count": {
+          "title": "Member count",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "UserProfile": {
+      "required": [
+        "username",
+        "capabilities",
+        "connections",
+        "subscription",
+        "rated_packages",
+        "teams",
+        "teams_full",
+        "is_staff"
+      ],
+      "type": "object",
+      "properties": {
+        "username": {
+          "title": "Username",
+          "type": "string",
+          "minLength": 1
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-nullable": true
+          }
+        },
+        "connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SocialAuthConnection"
+          }
+        },
+        "subscription": {
+          "$ref": "#/definitions/SubscriptionStatus"
+        },
+        "rated_packages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-nullable": true
+          }
+        },
+        "teams": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-nullable": true
+          }
+        },
+        "teams_full": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/UserTeam"
+          }
+        },
+        "is_staff": {
+          "title": "Is staff",
+          "type": "boolean"
+        }
+      }
+    },
+    "OwLoginResponseBody": {
+      "required": [
+        "session_id",
+        "profile"
+      ],
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "title": "Session id",
+          "type": "string",
+          "minLength": 1
+        },
+        "profile": {
+          "$ref": "#/definitions/UserProfile"
+        }
+      }
+    },
+    "Community": {
+      "required": [
+        "identifier",
+        "name"
+      ],
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "title": "Identifier",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "discord_url": {
+          "title": "Discord url",
+          "type": "string",
+          "maxLength": 512,
+          "x-nullable": true
+        },
+        "wiki_url": {
+          "title": "Wiki url",
+          "type": "string",
+          "maxLength": 512,
+          "x-nullable": true
+        },
+        "require_package_listing_approval": {
+          "title": "Require package listing approval",
+          "type": "boolean"
+        }
+      }
+    },
+    "PackageCategory": {
+      "required": [
+        "name",
+        "slug"
+      ],
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 512,
+          "minLength": 1
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string",
+          "format": "slug",
+          "pattern": "^[-a-zA-Z0-9_]+$",
+          "maxLength": 50,
+          "minLength": 1
+        }
+      }
+    },
+    "CurrentUserTeamPermissions": {
+      "required": [
+        "can_disband_team",
+        "can_leave_team"
+      ],
+      "type": "object",
+      "properties": {
+        "can_disband_team": {
+          "title": "Can disband team",
+          "type": "boolean"
+        },
+        "can_leave_team": {
+          "title": "Can leave team",
+          "type": "boolean"
+        }
+      }
+    },
+    "PackageDependency": {
+      "required": [
+        "community_identifier",
+        "community_name",
+        "description",
+        "image_src",
+        "namespace",
+        "package_name",
+        "version_number"
+      ],
+      "type": "object",
+      "properties": {
+        "community_identifier": {
+          "title": "Community identifier",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "community_name": {
+          "title": "Community name",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "image_src": {
+          "title": "Image src",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "namespace": {
+          "title": "Namespace",
+          "type": "string",
+          "maxLength": 64,
+          "minLength": 1
+        },
+        "package_name": {
+          "title": "Package name",
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "version_number": {
+          "title": "Version number",
+          "type": "string",
+          "maxLength": 16,
+          "minLength": 1
+        }
+      }
+    },
+    "PackageVersion": {
+      "required": [
+        "date_created",
+        "download_count",
+        "download_url",
+        "install_url",
+        "version_number"
+      ],
+      "type": "object",
+      "properties": {
+        "date_created": {
+          "title": "Date created",
+          "type": "string",
+          "format": "date-time"
+        },
+        "download_count": {
+          "title": "Download count",
+          "type": "integer",
+          "minimum": 0
+        },
+        "download_url": {
+          "title": "Download url",
+          "type": "string",
+          "minLength": 1
+        },
+        "install_url": {
+          "title": "Install url",
+          "type": "string",
+          "minLength": 1
+        },
+        "version_number": {
+          "title": "Version number",
+          "type": "string",
+          "maxLength": 16,
+          "minLength": 1
+        }
+      }
+    },
+    "PackageDetailViewContent": {
+      "required": [
+        "bg_image_src",
+        "categories",
+        "community_identifier",
+        "community_name",
+        "dependant_count",
+        "dependencies",
+        "dependency_string",
+        "description",
+        "download_count",
+        "download_url",
+        "image_src",
+        "install_url",
+        "last_updated",
+        "markdown",
+        "namespace",
+        "package_name",
+        "rating_score",
+        "team_name",
+        "versions",
+        "website"
+      ],
+      "type": "object",
+      "properties": {
+        "bg_image_src": {
+          "title": "Bg image src",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PackageCategory"
+          }
+        },
+        "community_identifier": {
+          "title": "Community identifier",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "community_name": {
+          "title": "Community name",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "dependant_count": {
+          "title": "Dependant count",
+          "type": "integer",
+          "minimum": 0
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PackageDependency"
+          }
+        },
+        "dependency_string": {
+          "title": "Dependency string",
+          "type": "string",
+          "maxLength": 210,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "download_count": {
+          "title": "Download count",
+          "type": "integer",
+          "minimum": 0
+        },
+        "download_url": {
+          "title": "Download url",
+          "type": "string",
+          "minLength": 1
+        },
+        "image_src": {
+          "title": "Image src",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "install_url": {
+          "title": "Install url",
+          "type": "string",
+          "minLength": 1
+        },
+        "last_updated": {
+          "title": "Last updated",
+          "type": "string",
+          "format": "date-time"
+        },
+        "markdown": {
+          "title": "Markdown",
+          "type": "string",
+          "minLength": 1
+        },
+        "namespace": {
+          "title": "Namespace",
+          "type": "string",
+          "maxLength": 64,
+          "minLength": 1
+        },
+        "package_name": {
+          "title": "Package name",
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "rating_score": {
+          "title": "Rating score",
+          "type": "integer",
+          "minimum": 0
+        },
+        "team_name": {
+          "title": "Team name",
+          "type": "string",
+          "maxLength": 64,
+          "minLength": 1
+        },
+        "versions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PackageVersion"
+          }
+        },
+        "website": {
+          "title": "Website",
+          "type": "string",
+          "maxLength": 1024,
+          "minLength": 1
+        }
+      }
+    },
+    "PackageCard": {
+      "required": [
+        "categories",
+        "community_identifier",
+        "community_name",
+        "description",
+        "download_count",
+        "image_src",
+        "is_deprecated",
+        "is_nsfw",
+        "is_pinned",
+        "last_updated",
+        "namespace",
+        "package_name",
+        "rating_score",
+        "team_name"
+      ],
+      "type": "object",
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PackageCategory"
+          }
+        },
+        "community_identifier": {
+          "title": "Community identifier",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "community_name": {
+          "title": "Community name",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "download_count": {
+          "title": "Download count",
+          "type": "integer",
+          "minimum": 0
+        },
+        "image_src": {
+          "title": "Image src",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "is_deprecated": {
+          "title": "Is deprecated",
+          "type": "boolean"
+        },
+        "is_nsfw": {
+          "title": "Is nsfw",
+          "type": "boolean"
+        },
+        "is_pinned": {
+          "title": "Is pinned",
+          "type": "boolean"
+        },
+        "last_updated": {
+          "title": "Last updated",
+          "type": "string",
+          "format": "date-time"
+        },
+        "namespace": {
+          "title": "Namespace",
+          "type": "string",
+          "maxLength": 64,
+          "minLength": 1
+        },
+        "package_name": {
+          "title": "Package name",
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "rating_score": {
+          "title": "Rating score",
+          "type": "integer",
+          "minimum": 0
+        },
+        "team_name": {
+          "title": "Team name",
+          "type": "string",
+          "maxLength": 64,
+          "minLength": 1
+        }
+      }
+    },
+    "CommunityPackageList": {
+      "required": [
+        "bg_image_src",
+        "categories",
+        "community_name",
+        "has_more_pages",
+        "packages"
+      ],
+      "type": "object",
+      "properties": {
+        "bg_image_src": {
+          "title": "Bg image src",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PackageCategory"
+          }
+        },
+        "community_name": {
+          "title": "Community name",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "has_more_pages": {
+          "title": "Has more pages",
+          "type": "boolean"
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PackageCard"
+          }
+        }
+      }
+    },
+    "CommunityCard": {
+      "required": [
+        "bg_image_src",
+        "download_count",
+        "identifier",
+        "name",
+        "package_count"
+      ],
+      "type": "object",
+      "properties": {
+        "bg_image_src": {
+          "title": "Bg image src",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        },
+        "download_count": {
+          "title": "Download count",
+          "type": "integer",
+          "minimum": 0
+        },
+        "identifier": {
+          "title": "Identifier",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "package_count": {
+          "title": "Package count",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "FrontPageContent": {
+      "required": [
+        "communities",
+        "download_count",
+        "package_count"
+      ],
+      "type": "object",
+      "properties": {
+        "communities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CommunityCard"
+          }
+        },
+        "download_count": {
+          "title": "Download count",
+          "type": "integer",
+          "minimum": 0
+        },
+        "package_count": {
+          "title": "Package count",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "RenderMarkdownParams": {
+      "required": [
+        "markdown"
+      ],
+      "type": "object",
+      "properties": {
+        "markdown": {
+          "title": "Markdown",
+          "type": "string",
+          "maxLength": 100000,
+          "minLength": 1
+        }
+      }
+    },
+    "RenderMarkdownResponse": {
+      "required": [
+        "html"
+      ],
+      "type": "object",
+      "properties": {
+        "html": {
+          "title": "Html",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "LegacyProfileCreateResponse": {
+      "required": [
+        "key"
+      ],
+      "type": "object",
+      "properties": {
+        "key": {
+          "title": "Key",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "PackageIndexEntry": {
+      "required": [
+        "namespace",
+        "name",
+        "version_number",
+        "file_format",
+        "file_size"
+      ],
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "title": "Namespace",
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "minLength": 1
+        },
+        "version_number": {
+          "title": "Version number",
+          "type": "string",
+          "minLength": 1
+        },
+        "file_format": {
+          "title": "File format",
+          "type": "string",
+          "minLength": 1
+        },
+        "file_size": {
+          "title": "File size",
+          "type": "integer"
+        },
+        "dependencies": {
+          "title": "Dependencies",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "PackageListingApproveRequest": {
+      "type": "object",
+      "properties": {
+        "internal_notes": {
+          "title": "Internal notes",
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
+    "PackageListingRejectRequest": {
+      "required": [
+        "rejection_reason"
+      ],
+      "type": "object",
+      "properties": {
+        "rejection_reason": {
+          "title": "Rejection reason",
+          "type": "string",
+          "minLength": 1
+        },
+        "internal_notes": {
+          "title": "Internal notes",
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
+    "PackageListingReportRequest": {
+      "required": [
+        "reason"
+      ],
+      "type": "object",
+      "properties": {
+        "version": {
+          "title": "Version",
+          "type": "integer",
+          "x-nullable": true
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string",
+          "enum": [
+            "Spam",
+            "Malware",
+            "Reupload",
+            "CopyrightOrLicense",
+            "WrongCommunity",
+            "WrongCategories",
+            "Other"
+          ]
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "maxLength": 12288,
+          "x-nullable": true
+        }
+      }
+    },
+    "PackageListingUpdateRequest": {
+      "required": [
+        "categories"
+      ],
+      "type": "object",
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "PackageCategoryExperimental": {
+      "required": [
+        "name",
+        "slug"
+      ],
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string",
+          "format": "slug",
+          "pattern": "^[-a-zA-Z0-9_]+$",
+          "minLength": 1
+        }
+      }
+    },
+    "PackageListingUpdateResponse": {
+      "required": [
+        "categories"
+      ],
+      "type": "object",
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PackageCategoryExperimental"
+          }
+        }
+      }
+    },
+    "PackageVersionExperimental": {
+      "required": [
+        "name",
+        "version_number",
+        "description",
+        "website_url"
+      ],
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "title": "Namespace",
+          "type": "string",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "version_number": {
+          "title": "Version number",
+          "type": "string",
+          "maxLength": 16,
+          "minLength": 1
+        },
+        "full_name": {
+          "title": "Full name",
+          "type": "string",
+          "readOnly": true
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "icon": {
+          "title": "Icon",
+          "type": "string",
+          "readOnly": true,
+          "format": "uri"
+        },
+        "dependencies": {
+          "title": "Dependencies",
+          "type": "string",
+          "readOnly": true
+        },
+        "download_url": {
+          "title": "Download url",
+          "type": "string",
+          "readOnly": true
+        },
+        "downloads": {
+          "title": "Downloads",
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 0
+        },
+        "date_created": {
+          "title": "Date created",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "website_url": {
+          "title": "Website url",
+          "type": "string",
+          "maxLength": 1024,
+          "minLength": 1
+        },
+        "is_active": {
+          "title": "Is active",
+          "type": "boolean"
+        }
+      }
+    },
+    "PackageListingExperimental": {
+      "type": "object",
+      "properties": {
+        "has_nsfw_content": {
+          "title": "Has nsfw content",
+          "type": "boolean"
+        },
+        "categories": {
+          "title": "Categories",
+          "type": "string",
+          "readOnly": true
+        },
+        "community": {
+          "title": "Community",
+          "type": "string",
+          "readOnly": true
+        },
+        "review_status": {
+          "title": "Review status",
+          "type": "string",
+          "enum": [
+            "unreviewed",
+            "approved",
+            "rejected"
+          ]
+        }
+      }
+    },
+    "PackageExperimental": {
+      "required": [
+        "name",
+        "latest",
+        "community_listings"
+      ],
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "title": "Namespace",
+          "type": "string",
+          "readOnly": true
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "full_name": {
+          "title": "Full name",
+          "type": "string",
+          "readOnly": true
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string",
+          "readOnly": true
+        },
+        "package_url": {
+          "title": "Package url",
+          "type": "string",
+          "readOnly": true
+        },
+        "date_created": {
+          "title": "Date created",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "date_updated": {
+          "title": "Date updated",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "rating_score": {
+          "title": "Rating score",
+          "type": "string",
+          "readOnly": true
+        },
+        "is_pinned": {
+          "title": "Is pinned",
+          "type": "boolean"
+        },
+        "is_deprecated": {
+          "title": "Is deprecated",
+          "type": "boolean"
+        },
+        "total_downloads": {
+          "title": "Total downloads",
+          "type": "string",
+          "readOnly": true
+        },
+        "latest": {
+          "$ref": "#/definitions/PackageVersionExperimental"
+        },
+        "community_listings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PackageListingExperimental"
+          }
+        }
+      }
+    },
+    "WikiPageIndex": {
+      "required": [
+        "id",
+        "title",
+        "slug",
+        "datetime_created",
+        "datetime_updated"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "title": "Title",
+          "type": "string",
+          "maxLength": 512,
+          "minLength": 1
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string",
+          "minLength": 1
+        },
+        "datetime_created": {
+          "title": "Datetime created",
+          "type": "string",
+          "format": "date-time"
+        },
+        "datetime_updated": {
+          "title": "Datetime updated",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "Wiki": {
+      "required": [
+        "id",
+        "title",
+        "slug",
+        "datetime_created",
+        "datetime_updated",
+        "pages"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "title": "Title",
+          "type": "string",
+          "minLength": 1
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string",
+          "minLength": 1
+        },
+        "datetime_created": {
+          "title": "Datetime created",
+          "type": "string",
+          "format": "date-time"
+        },
+        "datetime_updated": {
+          "title": "Datetime updated",
+          "type": "string",
+          "format": "date-time"
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WikiPageIndex"
+          }
+        }
+      }
+    },
+    "PackageWiki": {
+      "required": [
+        "namespace",
+        "name",
+        "wiki"
+      ],
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "title": "Namespace",
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "minLength": 1
+        },
+        "wiki": {
+          "$ref": "#/definitions/Wiki"
+        }
+      }
+    },
+    "PackageWikiListResponse": {
+      "required": [
+        "results",
+        "cursor",
+        "has_more"
+      ],
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PackageWiki"
+          }
+        },
+        "cursor": {
+          "title": "Cursor",
+          "type": "string",
+          "format": "date-time"
+        },
+        "has_more": {
+          "title": "Has more",
+          "type": "boolean"
+        }
+      }
+    },
+    "WikiPageUpsert": {
+      "required": [
+        "title",
+        "markdown_content"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "title": "Title",
+          "type": "string",
+          "maxLength": 512,
+          "minLength": 1
+        },
+        "markdown_content": {
+          "title": "Markdown content",
+          "type": "string",
+          "maxLength": 100000,
+          "minLength": 1
+        }
+      }
+    },
+    "WikiPage": {
+      "required": [
+        "id",
+        "title",
+        "slug",
+        "datetime_created",
+        "datetime_updated",
+        "markdown_content"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "title": "Title",
+          "type": "string",
+          "maxLength": 512,
+          "minLength": 1
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string",
+          "minLength": 1
+        },
+        "datetime_created": {
+          "title": "Datetime created",
+          "type": "string",
+          "format": "date-time"
+        },
+        "datetime_updated": {
+          "title": "Datetime updated",
+          "type": "string",
+          "format": "date-time"
+        },
+        "markdown_content": {
+          "title": "Markdown content",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "WikiPageDelete": {
+      "required": [
+        "id"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "MarkdownResponse": {
+      "required": [
+        "markdown"
+      ],
+      "type": "object",
+      "properties": {
+        "markdown": {
+          "title": "Markdown",
+          "type": "string",
+          "minLength": 1,
+          "x-nullable": true
+        }
+      }
+    },
+    "SchemaChannelUpdateResponse": {
+      "required": [
+        "channel_identifier",
+        "checksum_sha256"
+      ],
+      "type": "object",
+      "properties": {
+        "channel_identifier": {
+          "title": "Channel identifier",
+          "type": "string",
+          "minLength": 1
+        },
+        "checksum_sha256": {
+          "title": "Checksum sha256",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "AvailableCommunity": {
+      "required": [
+        "community",
+        "categories",
+        "url"
+      ],
+      "type": "object",
+      "properties": {
+        "community": {
+          "$ref": "#/definitions/Community"
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PackageCategory"
+          }
+        },
+        "url": {
+          "title": "Url",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "PackageSubmissionResult": {
+      "required": [
+        "package_version",
+        "available_communities"
+      ],
+      "type": "object",
+      "properties": {
+        "package_version": {
+          "$ref": "#/definitions/PackageVersionExperimental"
+        },
+        "available_communities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AvailableCommunity"
+          }
+        }
+      }
+    },
+    "PackageSubmissionMetadata": {
+      "required": [
+        "author_name",
+        "communities",
+        "has_nsfw_content",
+        "upload_uuid"
+      ],
+      "type": "object",
+      "properties": {
+        "author_name": {
+          "title": "Author name",
+          "type": "string"
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "communities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "has_nsfw_content": {
+          "title": "Has nsfw content",
+          "type": "boolean"
+        },
+        "upload_uuid": {
+          "title": "Upload uuid",
+          "type": "string",
+          "format": "uuid"
+        },
+        "community_categories": {
+          "title": "Community categories",
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "PackageSubmissionStatus": {
+      "required": [
+        "id",
+        "status",
+        "task_error"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "minLength": 1
+        },
+        "form_errors": {
+          "title": "Form errors",
+          "type": "object"
+        },
+        "task_error": {
+          "title": "Task error",
+          "type": "boolean"
+        },
+        "result": {
+          "title": "Result",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    },
+    "IconValidatorParams": {
+      "required": [
+        "icon_data"
+      ],
+      "type": "object",
+      "properties": {
+        "icon_data": {
+          "title": "Icon data",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "ValidatorResponse": {
+      "required": [
+        "success"
+      ],
+      "type": "object",
+      "properties": {
+        "success": {
+          "title": "Success",
+          "type": "boolean"
+        }
+      }
+    },
+    "ManifestV1ValidatorParams": {
+      "required": [
+        "namespace",
+        "manifest_data"
+      ],
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "title": "Namespace",
+          "type": "string"
+        },
+        "manifest_data": {
+          "title": "Manifest data",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "ReadmeValidatorParams": {
+      "required": [
+        "readme_data"
+      ],
+      "type": "object",
+      "properties": {
+        "readme_data": {
+          "title": "Readme data",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "UserMediaInitiateUploadParams": {
+      "required": [
+        "filename",
+        "file_size_bytes"
+      ],
+      "type": "object",
+      "properties": {
+        "filename": {
+          "title": "Filename",
+          "type": "string",
+          "minLength": 1
+        },
+        "file_size_bytes": {
+          "title": "File size bytes",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "UserMedia": {
+      "required": [
+        "filename",
+        "size"
+      ],
+      "type": "object",
+      "properties": {
+        "uuid": {
+          "title": "Uuid",
+          "type": "string",
+          "format": "uuid"
+        },
+        "filename": {
+          "title": "Filename",
+          "type": "string",
+          "maxLength": 1024,
+          "minLength": 1
+        },
+        "size": {
+          "title": "Size",
+          "type": "integer",
+          "maximum": 9223372036854775807,
+          "minimum": 0
+        },
+        "datetime_created": {
+          "title": "Datetime created",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "expiry": {
+          "title": "Expiry",
+          "type": "string",
+          "format": "date-time",
+          "x-nullable": true
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "initial",
+            "upload_created",
+            "upload_error",
+            "upload_complete",
+            "upload_aborted"
+          ]
+        }
+      }
+    },
+    "UploadPartUrl": {
+      "required": [
+        "part_number",
+        "url",
+        "offset",
+        "length"
+      ],
+      "type": "object",
+      "properties": {
+        "part_number": {
+          "title": "Part number",
+          "type": "integer"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string",
+          "format": "uri",
+          "minLength": 1
+        },
+        "offset": {
+          "title": "Offset",
+          "type": "integer"
+        },
+        "length": {
+          "title": "Length",
+          "type": "integer"
+        }
+      }
+    },
+    "UserMediaInitiateUploadResponse": {
+      "required": [
+        "user_media",
+        "upload_urls"
+      ],
+      "type": "object",
+      "properties": {
+        "user_media": {
+          "$ref": "#/definitions/UserMedia"
+        },
+        "upload_urls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/UploadPartUrl"
+          }
+        }
+      }
+    },
+    "CompletedPart": {
+      "required": [
+        "ETag",
+        "PartNumber"
+      ],
+      "type": "object",
+      "properties": {
+        "ETag": {
+          "title": "Etag",
+          "type": "string",
+          "minLength": 1
+        },
+        "PartNumber": {
+          "title": "Partnumber",
+          "type": "integer"
+        }
+      }
+    },
+    "UserMediaFinishUploadParams": {
+      "required": [
+        "parts"
+      ],
+      "type": "object",
+      "properties": {
+        "parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CompletedPart"
+          }
+        }
+      }
+    },
+    "PackageMetrics": {
+      "required": [
+        "downloads",
+        "rating_score",
+        "latest_version"
+      ],
+      "type": "object",
+      "properties": {
+        "downloads": {
+          "title": "Downloads",
+          "type": "integer"
+        },
+        "rating_score": {
+          "title": "Rating score",
+          "type": "integer"
+        },
+        "latest_version": {
+          "title": "Latest version",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "PackageVersionMetrics": {
+      "required": [
+        "downloads"
+      ],
+      "type": "object",
+      "properties": {
+        "downloads": {
+          "title": "Downloads",
+          "type": "integer"
+        }
+      }
+    },
+    "PackageListing": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "readOnly": true
+        },
+        "full_name": {
+          "title": "Full name",
+          "type": "string",
+          "readOnly": true
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string",
+          "readOnly": true
+        },
+        "package_url": {
+          "title": "Package url",
+          "type": "string",
+          "readOnly": true
+        },
+        "donation_link": {
+          "title": "Donation link",
+          "type": "string",
+          "readOnly": true
+        },
+        "date_created": {
+          "title": "Date created",
+          "type": "string",
+          "readOnly": true
+        },
+        "date_updated": {
+          "title": "Date updated",
+          "type": "string",
+          "readOnly": true
+        },
+        "uuid4": {
+          "title": "Uuid4",
+          "type": "string",
+          "readOnly": true
+        },
+        "rating_score": {
+          "title": "Rating score",
+          "type": "string",
+          "readOnly": true
+        },
+        "is_pinned": {
+          "title": "Is pinned",
+          "type": "string",
+          "readOnly": true
+        },
+        "is_deprecated": {
+          "title": "Is deprecated",
+          "type": "string",
+          "readOnly": true
+        },
+        "has_nsfw_content": {
+          "title": "Has nsfw content",
+          "type": "boolean"
+        },
+        "categories": {
+          "title": "Categories",
+          "type": "string",
+          "readOnly": true
+        },
+        "versions": {
+          "title": "Versions",
+          "type": "string",
+          "readOnly": true
+        }
+      }
+    }
+  }
+}

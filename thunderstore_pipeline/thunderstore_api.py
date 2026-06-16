@@ -224,6 +224,7 @@ class ThunderstoreAPI:
     ) -> dict:
         cats = categories or ["Mods"]
         body = {
+            "upload_uuid": uuid,
             "author_name": author,
             "communities": [community],
             "categories": cats,
@@ -231,5 +232,5 @@ class ThunderstoreAPI:
             "has_nsfw_content": has_nsfw,
         }
         return self._post(
-            f"/api/experimental/usermedia/{uuid}/submit/", body
+            "/api/experimental/submission/submit/", body
         ).json()
