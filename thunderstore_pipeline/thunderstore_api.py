@@ -147,7 +147,7 @@ class ThunderstoreAPI:
     def initiate_upload(self, name: str, file_size: int) -> dict:
         r = self._post(
             "/api/experimental/usermedia/initiate-upload/",
-            {"name": name, "size": file_size},
+            {"filename": name, "file_size_bytes": file_size},
         )
         data = r.json()
         if "user_media" not in data or "uuid" not in data.get("user_media", {}):
