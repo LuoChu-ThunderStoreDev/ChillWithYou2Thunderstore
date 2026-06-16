@@ -95,4 +95,4 @@ jobs:
             --mod-key "${{ inputs.mod_key }}" \
             ${{ inputs.version != '' && format('--version {0}', inputs.version) || '' }} \
             --package-zip "${{ steps.download.outputs.artifact_zip }}" \
-            ${{ inputs.dry_run == 'true' && '--dry-run' || '' }}
+            ${{ (inputs.dry_run == true || inputs.dry_run == 'true') && '--dry-run' || '' }}
