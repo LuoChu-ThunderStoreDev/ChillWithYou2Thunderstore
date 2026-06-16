@@ -30,6 +30,8 @@ jobs:
       all: ${{ github.event_name == 'schedule' || inputs.all }}
       mod_key: ${{ inputs.mod_key || '' }}
       tag: ${{ inputs.tag || '' }}
+    permissions:
+      contents: write
     secrets: inherit
 
   build:
@@ -43,6 +45,8 @@ jobs:
     with:
       mod_key: ${{ matrix.mod.mod_key }}
       version: ${{ matrix.mod.version }}
+    permissions:
+      contents: write
     secrets: inherit
 
   publish:
@@ -57,4 +61,7 @@ jobs:
       mod_key: ${{ matrix.mod.mod_key }}
       version: ${{ matrix.mod.version }}
       artifact_run_id: ${{ github.run_id }}
+    permissions:
+      contents: read
+      actions: read
     secrets: inherit
