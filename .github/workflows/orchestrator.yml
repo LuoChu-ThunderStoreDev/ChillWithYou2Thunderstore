@@ -1,0 +1,60 @@
+name: Full Pipeline Orchestrator
+
+on:
+  workflow_dispatch:
+    inputs:
+      all:
+        description: Run full pipeline for all enabled mods
+        required: false
+        default: true
+        type: boolean
+      mod_key:
+        description: Run for a single mod (overrides --all)
+        required: false
+        type: string
+      tag:
+        description: Release tag override
+        required: false
+        type: string
+  schedule:
+    - cron: "0 0 * * *"
+
+concurrency:
+  group: orchestrator
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    uses: ./.github/workflows/sync.yml
+    with:
+      all: ${{ github.event_name == 'schedule' || inputs.all }}
+      mod_key: ${{ inputs.mod_key || '' }}
+      tag: ${{ inputs.tag || '' }}
+    secrets: inherit
+
+  build:
+    needs: sync
+    if: needs.sync.outputs.synced_mods != '[]' && needs.sync.outputs.synced_mods != ''
+    strategy:
+      max-parallel: 2
+      matrix:
+        mod: ${{ fromJSON(needs.sync.outputs.synced_mods) }}
+    uses: ./.github/workflows/build-and-validate.yml
+    with:
+      mod_key: ${{ matrix.mod.mod_key }}
+      version: ${{ matrix.mod.version }}
+    secrets: inherit
+
+  publish:
+    needs: [sync, build]
+    if: needs.build.result != 'failure'
+    strategy:
+      max-parallel: 1
+      matrix:
+        mod: ${{ fromJSON(needs.sync.outputs.synced_mods) }}
+    uses: ./.github/workflows/publish.yml
+    with:
+      mod_key: ${{ matrix.mod.mod_key }}
+      version: ${{ matrix.mod.version }}
+      artifact_run_id: ${{ github.run_id }}
+    secrets: inherit

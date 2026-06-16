@@ -4,15 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A CI pipeline that converts mod GitHub Release assets into validated Thunderstore packages. It does NOT contain any game or mod code — only scripts, configs, templates, and GitHub Actions workflows for automating the `Release → Thunderstore` conversion.
+A CI pipeline that converts mod GitHub Release assets into validated Thunderstore packages. It does NOT contain any game or mod code — only Python CLI, configs, templates, and GitHub Actions workflows for automating the `Release → Thunderstore` conversion.
 
 ## Architecture: Three-Phase Pipeline
 
-```
+```text
 GitHub Release (source repo)
         │
         ▼
-Phase 1: scripts/sync_release_assets.sh
+Phase 1: python -m thunderstore_pipeline sync
         │  Downloads release assets per mods.json asset rules
         │  Writes to a dedicated assets/<mod_key> git branch
         │  Files: assets/<mod_key>/<version>/... + _sync_metadata.json
@@ -20,104 +20,149 @@ Phase 1: scripts/sync_release_assets.sh
 assets/<mod_key> branch
         │
         ▼
-Phase 2: scripts/build_package.sh
+Phase 2: python -m thunderstore_pipeline build
         │  Reads asset branch, generates manifest.json
         │  Syncs README from source repo, rewrites relative links
         │  Produces <namespace>-<name>-<version>.zip
         │
-        ├── scripts/rewrite_readme_links.py   (README link rewriting)
-        └── scripts/validate_thunderstore.sh  (calls Thunderstore validate API)
+        └── python -m thunderstore_pipeline validate
+               (calls Thunderstore validate API, advisory only)
 
-Phase 3: scripts/publish_thunderstore.sh
+Phase 3: python -m thunderstore_pipeline publish
         │  Downloads pre-built/validated package artifact
         │  Generates thunderstore.toml from mods.json
         │  Uploads via Thunderstore usermedia API (initiate → chunks → finish → submit)
         │
-        └── .github/workflows/publish-thunderstore.yml  (triggers: workflow_dispatch, repository_dispatch)
+        └── .github/workflows/publish.yml  (triggers: workflow_dispatch, workflow_call)
 ```
+
+**Triggers:** Each phase workflow supports `workflow_dispatch` (manual/debug) and `workflow_call` (orchestrator chaining). The `orchestrator.yml` runs daily via `schedule` and chains all three phases.
 
 ## Repository Structure
 
-```
-config/mods.json              # THE single source of truth — all mod definitions
-scripts/
-  sync_release_assets.sh      # Phase 1: download & extract release assets → assets branch
-  build_package.sh            # Phase 2: assemble zip from assets branch
-  validate_thunderstore.sh    # Phase 2: validate manifest/readme/icon via Thunderstore API
-  publish_thunderstore.sh      # Phase 3: upload validated package to Thunderstore
-  validate_mods_config.sh     # Validates mods.json schema, called by all other scripts
-  rewrite_readme_links.py     # Converts relative links in README to absolute GitHub URLs
-templates/<mod_key>/          # Fallback README.md + icon.png per mod
-build/                        # .gitignored — local/output artifacts
-  packages/<mod_key>/<ver>/   # Output zip files
-  validation/                 # API validation response JSONs + raw request/response
+```text
+config/mods.json                       # THE single source of truth — all mod definitions
+thunderstore_pipeline/                 # Python package (unified CLI)
+  __init__.py / __main__.py            # python -m thunderstore_pipeline entry
+  cli.py                               # Typer CLI with subcommands
+  models.py                            # Pydantic schema for mods.json + API types
+  config.py                            # Config loading & validation
+  gh.py                                # gh CLI wrapper (releases, branches, dispatch)
+  thunderstore_api.py                  # Thunderstore HTTP API client (httpx)
+  sync.py                              # Phase 1: download assets → branch
+  build.py                             # Phase 2: assemble zip + manifest
+  validate.py                          # Phase 2: Thunderstore validate API
+  publish.py                           # Phase 3: chunked upload + publish
+  ci_output.py                         # GITHUB_OUTPUT/SUMMARY/ENV integration
+  readme_rewriter.py                   # Relative link → absolute GitHub URL rewriting
+templates/<mod_key>/                   # Fallback README.md + icon.png per mod
+build/                                 # .gitignored — local/output artifacts
+  packages/<mod_key>/<ver>/            # Output zip files
+  validation/                          # API validation response JSONs + raw request/response
 .github/workflows/
-  sync-release-assets.yml     # Triggers: workflow_dispatch, repository_dispatch, cron (hourly)
-  build-and-validate-thunderstore.yml  # Triggers: workflow_dispatch, repository_dispatch
-  publish-thunderstore.yml     # Triggers: workflow_dispatch, repository_dispatch
+  sync.yml                             # Phase 1: workflow_dispatch + workflow_call
+  build-and-validate.yml               # Phase 2: workflow_dispatch + workflow_call
+  publish.yml                          # Phase 3: workflow_dispatch + workflow_call
+  orchestrator.yml                     # Full pipeline: schedule + workflow_dispatch
+.github/actions/setup/action.yml       # Composite action: checkout + uv cache + install
+scripts/                               # Legacy shell scripts (kept for reference)
+  rewrite_readme_links.py              # Original Python script (migrated to package)
+pyproject.toml                         # uv-managed deps (typer, httpx, pydantic)
+uv.lock                                # Locked dependency versions
 ```
 
-## Running Scripts Locally
+## Running Locally
 
-All scripts are bash with standard `--help` flags. They all auto-validate `mods.json` before proceeding.
+All commands use the unified Python CLI:
 
 ```bash
 # Validate mods.json
-./scripts/validate_mods_config.sh --config config/mods.json
+uv run python -m thunderstore_pipeline config-check
 
 # Sync a single mod (download release assets → assets branch)
-bash scripts/sync_release_assets.sh --mod-key igpu-savior --tag v1.2.3
-bash scripts/sync_release_assets.sh --mod-key igpu-savior  # uses latest release
+uv run python -m thunderstore_pipeline sync --mod-key igpu-savior --tag v1.2.3
+uv run python -m thunderstore_pipeline sync --mod-key igpu-savior  # uses latest release
 
 # Sync all enabled mods
-bash scripts/sync_release_assets.sh --all
+uv run python -m thunderstore_pipeline sync --all
 
 # Dry-run sync (no branch push)
-DRY_RUN=true bash scripts/sync_release_assets.sh --mod-key aichat
+uv run python -m thunderstore_pipeline sync --mod-key aichat --dry-run
 
 # Build package from assets branch
-bash scripts/build_package.sh --mod-key igpu-savior --version 1.2.3
-bash scripts/build_package.sh --mod-key igpu-savior  # picks latest on branch
+uv run python -m thunderstore_pipeline build --mod-key igpu-savior --version 1.2.3
+uv run python -m thunderstore_pipeline build --mod-key igpu-savior  # picks latest on branch
 
 # Validate built package against Thunderstore API
-THUNDERSTORE_AUTH_TOKEN=<token> bash scripts/validate_thunderstore.sh \
+THUNDERSTORE_AUTH_TOKEN=<token> uv run python -m thunderstore_pipeline validate \
   --manifest build/packages/.../manifest.json \
   --readme build/packages/.../README.md \
   --icon build/packages/.../icon.png \
   --namespace Small_tailqwq
 
 # Publish a pre-built package to Thunderstore (dry-run by default)
-THUNDERSTORE_AUTH_TOKEN=<token> bash scripts/publish_thunderstore.sh \
+THUNDERSTORE_AUTH_TOKEN=<token> uv run python -m thunderstore_pipeline publish \
   --mod-key realtime-weather --version 1.0.0 \
   --package-zip build/packages/realtime-weather/1.0.0/Small_tailqwq-RealTimeWeather-1.0.0.zip \
   --dry-run
 
 # Actually publish (omit --dry-run)
-THUNDERSTORE_AUTH_TOKEN=<token> bash scripts/publish_thunderstore.sh \
+THUNDERSTORE_AUTH_TOKEN=<token> uv run python -m thunderstore_pipeline publish \
   --mod-key realtime-weather --version 1.0.0 \
   --package-zip build/packages/realtime-weather/1.0.0/Small_tailqwq-RealTimeWeather-1.0.0.zip
 
-# Rewrite relative links in a README
-python3 scripts/rewrite_readme_links.py \
-  --input README.md --output fixed.md \
-  --owner Small-tailqwq --repo RealTimeWeatherMod --ref v1.0.0 \
-  --readme-path README.md
+# Rewrite relative links in a README (programmatic API)
+uv run python -c "
+from thunderstore_pipeline.readme_rewriter import rewrite_readme_file
+rewrite_readme_file('input.md', 'output.md', 'Owner', 'Repo', 'v1.0', 'README.md')
+"
 ```
 
-**Dependencies:** All scripts require `jq`, `curl`, `git`. Additionally: `build_package.sh` requires `zip` and `python3`; `scripts/sync_release_assets.sh` requires `unzip`; `publish_thunderstore.sh` requires `unzip` (for reading manifest.json from zip).
+**Dependencies:** Python 3.12+ managed by uv. System tools: `git`, `zip`, `unzip`. `gh` CLI for GitHub operations (pre-installed on Actions runners). No longer requires `jq` or `curl` — replaced by `httpx` and Python's `json` module.
+
+## CI Workflow Triggers
+
+```bash
+# Debug a single phase manually
+gh workflow run sync.yml -f mod_key=realtime-weather -f dry_run=true
+gh workflow run build-and-validate.yml -f mod_key=realtime-weather
+gh workflow run publish.yml -f mod_key=realtime-weather -f artifact_run_id=<run_id>
+
+# Run full pipeline manually
+gh workflow run orchestrator.yml
+
+# Auto: orchestrator runs daily at UTC 0 via schedule cron
+```
+
+## Concurrency Model
+
+Each workflow uses concurrency groups keyed on `mod_key` to allow parallel processing of different mods while preventing duplicate runs for the same mod:
+
+| Workflow | Concurrency Group | Cancel | Note |
+| -------- | ----------------- | ------ | ---- |
+| sync.yml | `sync-<mod_key>` or `sync-all` | false | One per mod at a time |
+| build-and-validate.yml | `build-<mod_key>` | false | One per mod at a time |
+| publish.yml | `publish-<mod_key>` | false | One per mod at a time |
+| orchestrator.yml | `orchestrator` | false | Only one full pipeline run |
+
+Orchestrator limits parallel builds with `max-parallel: 2` and serializes publishes with `max-parallel: 1`.
 
 ## Key Design Decisions
 
+- **Python CLI replaces shell scripts**: All business logic is in `thunderstore_pipeline/`. Workflows are thin — they only invoke `uv run python -m thunderstore_pipeline <subcommand>`.
+- **`gh` CLI for GitHub operations**: Uses `gh api`, `gh release`, `git` via `subprocess.run` instead of raw `curl` + API token management. `gh` is pre-installed on GitHub Actions runners.
+- **`httpx` for Thunderstore API**: The Thunderstore usermedia upload API has no CLI wrapper. Python `httpx` with exponential backoff handles chunked uploads.
+- **Pydantic for config validation**: `mods.json` is validated at load time by pydantic models — catches schema errors before any API calls. Replaces `validate_mods_config.sh` entirely.
 - **Separate branches for assets**: Each `assets/<mod_key>` branch is the stable store of downloaded release content. Scripts refuse to overwrite an existing version directory — prevent accidental mutation.
-- **No auto-publish (manual gate)**: Phase 3 must be triggered explicitly. When triggered from `workflow_dispatch`, `dry_run` defaults to `true`. Only `repository_dispatch` from a successful Phase 2 run sets `dry_run=false` automatically, creating a controlled publish path.
-- **Publish dependencies:** `publish_thunderstore.sh` requires `jq`, `curl`, `unzip` (same as build_package.sh minus `zip`, `git`, `python3`).
-- **Token naming convention**: Thunderstore API tokens are stored as GitHub Secrets named `{NAMESPACE_UPPER_WITH_UNDERSCORE}_THUNDER_TOKEN` (e.g., `SMALL_TAILQWQ_THUNDER_TOKEN`). The `build_package.sh` script computes this key from `thunderstore.namespace` via `tr '[:lower:]-' '[:upper:]_'`.
+- **No auto-publish (manual gate)**: Phase 3 must be triggered explicitly. When triggered from `workflow_dispatch`, `dry_run` defaults to `true`. The orchestrator sets `dry_run=false` for the automated path.
+- **Token naming convention**: Thunderstore API tokens are stored as GitHub Secrets named `{NAMESPACE_UPPER_WITH_UNDERSCORE}_THUNDER_TOKEN` (e.g., `SMALL_TAILQWQ_THUNDER_TOKEN`). The `build.py` computes this from `thunderstore.namespace` via `namespace.upper().replace('-', '_')`.
 - **Readme fallback on sync failure**: If `sync_with_source_readme` is true but the source fetch fails, the build falls back to `templates/<mod_key>/README.md` instead of failing.
 - **`website_url` points to source repo**: The manifest's `website_url` field is set to `https://github.com/${owner}/${repo}` (the mod's own source repo), not this pipeline repo.
-- **Description truncation**: Manifest descriptions are truncated to 256 Unicode *characters* via `jq '.[0:256]'`, not raw bytes — prevents splitting multi-byte UTF-8 characters. (Previously used `cut -c1-256` which counted bytes.)
-- **`[[ "$name" != $matcher ]]` is intentional glob matching**: In `sync_release_assets.sh`, the unquoted `$matcher` in `[[ ]]` is bash's glob pattern matching (e.g., `*.dll` matches `RealTimeWeatherMod.dll`). Do NOT add quotes — that changes it from glob to literal string comparison and breaks asset matching.
-- **SemVer only (no pre-release)**: `semver_from_tag` only accepts strict `X.Y.Z` format. Tags like `v1.0.0-beta` or `v1.0.0-rc1` will fail. This is intentional.
-- **Cron runs daily at UTC 0**: The sync workflow's `schedule` trigger is `0 0 * * *` (once per day). Previously it was `0 * * * *` (hourly), which wasted GitHub API quota.
+- **Description truncation**: Manifest descriptions are truncated to 256 Unicode *characters* via Python string slicing `[:256]`, not raw bytes — prevents splitting multi-byte UTF-8 characters.
+- **Glob matching uses `fnmatch`**: Asset rule `matcher` fields use Python's `fnmatch.fnmatch` for shell-style glob matching (e.g., `*.dll` matches `RealTimeWeatherMod.dll`).
+- **SemVer only (no pre-release)**: `_semver_from_tag` only accepts strict `X.Y.Z` format. Tags like `v1.0.0-beta` or `v1.0.0-rc1` will fail. This is intentional.
+- **Cron runs daily at UTC 0**: The orchestrator's `schedule` trigger is `0 0 * * *` (once per day).
+- **Validation is advisory**: The `validate` subcommand exits 0 even on API validation failure — it writes warnings to `validation_warning` output. This matches the original shell script behavior.
 
 ## mods.json Schema (config-driven pipeline)
 

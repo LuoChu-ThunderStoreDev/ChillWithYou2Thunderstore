@@ -1,0 +1,17 @@
+[project]
+name = "thunderstore-pipeline"
+version = "0.1.0"
+description = "CI pipeline for converting GitHub Releases to Thunderstore packages"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.15",
+    "httpx>=0.28",
+    "pydantic>=2.10",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-mock>=3"]
