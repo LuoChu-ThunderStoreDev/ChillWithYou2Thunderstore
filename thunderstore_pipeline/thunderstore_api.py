@@ -156,42 +156,47 @@ class ThunderstoreAPI:
             )
         return data
 
+    def _upload_single_chunk(
+        self, url: str, chunk_data: bytes, max_retries: int
+    ) -> str:
+        """Upload a single chunk with retries. Returns the ETag on success."""
+        for retry in range(max_retries):
+            try:
+                r = httpx.put(url, content=chunk_data, timeout=120)
+                if 200 <= r.status_code < 300:
+                    etag = r.headers.get("etag", "").strip()
+                    if etag:
+                        return etag
+            except httpx.RequestError:
+                pass
+            if retry < max_retries - 1:
+                wait = 2 ** (retry + 1)
+                print(f"    Retry {retry + 1}/{max_retries} after {wait}s...")
+                time.sleep(wait)
+        raise ThunderstoreError(
+            f"Failed to upload chunk after {max_retries} retries"
+        )
+
     def upload_chunks(
         self, zip_path: Path, upload_urls: list[dict], max_retries: int = 3
     ) -> list[dict]:
         parts: list[dict] = []
         total = len(upload_urls)
         print(f"Uploading {total} chunk(s)...")
+        # Debug: show the first upload_url's keys so we can detect API field changes
+        if upload_urls:
+            print(f"  (upload_url keys: {list(upload_urls[0].keys())})")
         with open(zip_path, "rb") as f:
             for ui in upload_urls:
-                part_num = ui["number"]
+                part_num = ui.get("part_number", ui.get("number"))
+                offset_val = ui.get("offset", ui.get("part_offset"))
+                length_val = ui.get("length", ui.get("part_length"))
                 print(
-                    f"  Chunk {part_num}/{total}: offset={ui['offset']} length={ui['length']}"
+                    f"  Chunk {part_num}/{total}: offset={offset_val} length={length_val}"
                 )
-                f.seek(ui["offset"])
-                chunk_data = f.read(ui["length"])
-                etag: str | None = None
-                for retry in range(max_retries):
-                    try:
-                        r = httpx.put(
-                            ui["url"], content=chunk_data, timeout=120
-                        )
-                        if 200 <= r.status_code < 300:
-                            etag = r.headers.get("etag", "").strip()
-                            if etag:
-                                break
-                    except httpx.RequestError:
-                        pass
-                    if retry < max_retries - 1:
-                        wait = 2 ** (retry + 1)
-                        print(
-                            f"    Retry {retry + 1}/{max_retries} after {wait}s..."
-                        )
-                        time.sleep(wait)
-                if not etag:
-                    raise ThunderstoreError(
-                        f"Failed to upload chunk {part_num} after {max_retries} retries"
-                    )
+                f.seek(offset_val)
+                chunk_data = f.read(length_val)
+                etag = self._upload_single_chunk(ui["url"], chunk_data, max_retries)
                 parts.append({"tag": etag, "number": part_num})
         return parts
 
