@@ -30,7 +30,7 @@ class AssetRule(BaseModel):
     def validate_kind_fields(self) -> "AssetRule":
         if self.kind == "file" and not self.target:
             raise ValueError("file rule requires target")
-        if self.kind == "zip" and (not self.extract or len(self.extract) == 0):
+        if self.kind == "zip" and not self.extract:
             raise ValueError("zip rule requires non-empty extract array")
         if self.kind == "zip":
             for ex in self.extract:
@@ -70,13 +70,23 @@ class ModsFile(BaseModel):
 
     @model_validator(mode="after")
     def validate_unique_keys(self) -> "ModsFile":
-        keys = [m.key for m in self.mods]
-        if len(keys) != len(set(keys)):
-            raise ValueError(f"Duplicated mod keys detected: {keys}")
+        seen: set[str] = set()
+        dupes: set[str] = set()
+        for m in self.mods:
+            if m.key in seen:
+                dupes.add(m.key)
+            seen.add(m.key)
+        if dupes:
+            raise ValueError(f"Duplicate mod keys: {dupes}")
         return self
+
+
+class ReleaseAsset(BaseModel):
+    name: str
+    browser_download_url: str
 
 
 class ReleaseMeta(BaseModel):
     tag_name: str
     html_url: str
-    assets: list[dict]  # minimal — only name, browser_download_url
+    assets: list[ReleaseAsset]
