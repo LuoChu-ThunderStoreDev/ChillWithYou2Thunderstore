@@ -1,0 +1,89 @@
+name: Sync Release Assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      mod_key:
+        description: Mod key from config/mods.json
+        required: false
+        type: string
+      tag:
+        description: Optional release tag override (e.g. v1.2.3)
+        required: false
+        type: string
+      all:
+        description: Sync all enabled mods
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: Do not push assets branch
+        required: false
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      mod_key:
+        type: string
+        default: ""
+      tag:
+        type: string
+        default: ""
+      all:
+        type: boolean
+        default: false
+      dry_run:
+        type: boolean
+        default: false
+    outputs:
+      synced_mods:
+        description: JSON array of synced {mod_key, version}
+        value: ${{ jobs.sync.outputs.synced_mods }}
+
+concurrency:
+  group: sync-${{ inputs.mod_key || 'all' }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      synced_mods: ${{ steps.summary.outputs.synced_mods }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - run: uv sync --frozen
+
+      - name: Run sync
+        id: sync
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          SYNC_SUMMARY_FILE: /tmp/sync_summary.jsonl
+        run: |
+          uv run python -m thunderstore_pipeline sync \
+            ${{ inputs.all == 'true' && '--all' || '' }} \
+            ${{ inputs.mod_key != '' && format('--mod-key {0}', inputs.mod_key) || '' }} \
+            ${{ inputs.tag != '' && format('--tag {0}', inputs.tag) || '' }} \
+            ${{ inputs.dry_run == 'true' && '--dry-run' || '' }}
+
+      - name: Read sync summary
+        id: summary
+        if: always()
+        run: |
+          if [[ -f /tmp/sync_summary.jsonl ]]; then
+            MODS=$(jq -s -c '.' /tmp/sync_summary.jsonl)
+            echo "synced_mods=${MODS}" >> "$GITHUB_OUTPUT"
+          else
+            echo "synced_mods=[]" >> "$GITHUB_OUTPUT"
+          fi
