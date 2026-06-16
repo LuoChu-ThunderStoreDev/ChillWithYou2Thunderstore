@@ -152,7 +152,7 @@ def build_package(
         zip_path = out_dir / zip_name
 
         subprocess.run(
-            ["zip", "-qr", str(zip_path), "."],
+            ["zip", "-qr", str(zip_path.resolve()), "."],
             cwd=package_stage,
             check=True,
             timeout=120,
