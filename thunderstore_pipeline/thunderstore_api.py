@@ -222,7 +222,7 @@ class ThunderstoreAPI:
         categories: list[str] | None = None,
         has_nsfw: bool = False,
     ) -> dict:
-        cats = categories or ["Mods"]
+        cats = categories or ["mods"]
         body = {
             "upload_uuid": uuid,
             "author_name": author,
