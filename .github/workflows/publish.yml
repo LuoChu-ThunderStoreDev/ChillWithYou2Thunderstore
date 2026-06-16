@@ -47,14 +47,7 @@ jobs:
       actions: read
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: astral-sh/setup-uv@v5
-        with:
-          python-version: "3.12"
-          enable-cache: true
-
-      - run: uv sync --frozen
+      - uses: ./.github/actions/setup
 
       - name: Download package artifact
         id: download

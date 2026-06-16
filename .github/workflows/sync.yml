@@ -53,16 +53,9 @@ jobs:
       synced_mods: ${{ steps.summary.outputs.synced_mods }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
         with:
-          fetch-depth: 0
-
-      - uses: astral-sh/setup-uv@v5
-        with:
-          python-version: "3.12"
-          enable-cache: true
-
-      - run: uv sync --frozen
+          fetch-depth: "0"
 
       - name: Run sync
         id: sync

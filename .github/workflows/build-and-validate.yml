@@ -46,16 +46,9 @@ jobs:
       validation_warning: ${{ steps.validate.outputs.validation_warning }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
         with:
-          fetch-depth: 0
-
-      - uses: astral-sh/setup-uv@v5
-        with:
-          python-version: "3.12"
-          enable-cache: true
-
-      - run: uv sync --frozen
+          fetch-depth: "0"
 
       - name: Build package
         id: build
