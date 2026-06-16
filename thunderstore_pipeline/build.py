@@ -158,6 +158,11 @@ def build_package(
             timeout=120,
         )
 
+        # Copy manifest, readme, icon to out_dir so they survive tmp_dir cleanup
+        shutil.copy2(package_stage / "manifest.json", out_dir / "manifest.json")
+        shutil.copy2(package_stage / "README.md", out_dir / "README.md")
+        shutil.copy2(package_stage / "icon.png", out_dir / "icon.png")
+
         print(f"Built package: {zip_path}")
         ci.write_outputs(
             mod_key=mod_key,
@@ -166,9 +171,9 @@ def build_package(
             thunder_token_key=token_key,
             package_name=name,
             package_path=str(zip_path),
-            manifest_path=str(package_stage / "manifest.json"),
-            readme_path=str(package_stage / "README.md"),
-            icon_path=str(package_stage / "icon.png"),
+            manifest_path=str(out_dir / "manifest.json"),
+            readme_path=str(out_dir / "README.md"),
+            icon_path=str(out_dir / "icon.png"),
         )
 
     finally:
