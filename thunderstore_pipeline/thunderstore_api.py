@@ -197,7 +197,7 @@ class ThunderstoreAPI:
                 f.seek(offset_val)
                 chunk_data = f.read(length_val)
                 etag = self._upload_single_chunk(ui["url"], chunk_data, max_retries)
-                parts.append({"tag": etag, "number": part_num})
+                parts.append({"ETag": etag, "PartNumber": part_num})
         return parts
 
     def finish_upload(self, uuid: str, parts: list[dict]) -> None:
