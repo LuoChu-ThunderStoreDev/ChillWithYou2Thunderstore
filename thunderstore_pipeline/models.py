@@ -46,7 +46,7 @@ class ThunderstoreInfo(BaseModel):
     description: str
     dependencies: list[str] = []
     has_nsfw_content: bool = False
-    categories: list[str] = ["Mods"]
+    categories: list[str] = ["mods"]
 
 
 class PackageFiles(BaseModel):
