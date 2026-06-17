@@ -161,7 +161,7 @@ def publish_package(
         print(f"Submit failed: {e}", file=sys.stderr)
         raise SystemExit(1)
 
-    package_url = f"{api.base_url}/package/{namespace}/{name}/{version}/"
+    package_url = f"{api.base_url}/c/{community}/p/{namespace}/{name}/v/{version}/"
     print()
     print(f"Published: {package_url}")
 
