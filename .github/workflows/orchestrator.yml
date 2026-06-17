@@ -65,3 +65,33 @@ jobs:
       contents: read
       actions: read
     secrets: inherit
+
+  summary:
+    needs: [sync, build, publish]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write pipeline summary
+        run: |
+          {
+            echo "## Pipeline Summary"
+            echo ""
+            echo "**Trigger:** ${{ github.event_name }}"
+            echo "**Run:** [\`${{ github.run_id }}\`](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            echo ""
+            echo "### Synced (进入 build/publish)"
+            echo '```json'
+            echo '${{ needs.sync.outputs.synced_mods }}'
+            echo '```'
+            echo ""
+            echo "### Skipped (已是最新)"
+            echo '```json'
+            echo '${{ needs.sync.outputs.skipped_mods }}'
+            echo '```'
+            echo ""
+            echo "| Phase | Status |"
+            echo "|-------|--------|"
+            echo "| sync | ${{ needs.sync.result }} |"
+            echo "| build | ${{ needs.build.result }} |"
+            echo "| publish | ${{ needs.publish.result }} |"
+          } >> "$GITHUB_STEP_SUMMARY"

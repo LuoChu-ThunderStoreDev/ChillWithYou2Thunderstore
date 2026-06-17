@@ -144,6 +144,22 @@ class ThunderstoreAPI:
 
     # --- Upload (usermedia) ---
 
+    def check_package_exists(self, namespace: str, name: str) -> dict | None:
+        """Check if a package exists on Thunderstore.
+
+        GET /api/experimental/package/{namespace}/{name}/
+        Returns parsed PackageExperimental dict if exists (200), None if not (404/error).
+        No auth required.
+        """
+        url = f"{self.base_url}/api/experimental/package/{namespace}/{name}/"
+        try:
+            r = httpx.get(url, headers={"Content-Type": "application/json"}, timeout=30)
+            if r.status_code == 200:
+                return r.json()
+            return None
+        except httpx.RequestError:
+            return None
+
     def initiate_upload(self, name: str, file_size: int) -> dict:
         r = self._post(
             "/api/experimental/usermedia/initiate-upload/",

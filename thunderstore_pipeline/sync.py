@@ -13,8 +13,9 @@ from pathlib import Path
 
 from .config import get_mod
 from .models import ModsFile, ModConfig, AssetRule
-from .gh import get_release, download_asset, push_to_branch
+from .gh import get_release, download_asset, push_to_branch, remote_branch_exists, list_versions_on_branch
 from .ci_output import CIOutput
+from .thunderstore_api import ThunderstoreAPI
 
 
 def _semver_from_tag(tag: str) -> str:
@@ -28,6 +29,28 @@ def _semver_from_tag(tag: str) -> str:
 def _match_glob(name: str, pattern: str) -> bool:
     """Shell-style glob matching using fnmatch."""
     return fnmatch.fnmatch(name, pattern)
+
+
+def _write_skipped(mod_key: str, version: str, reason: str) -> None:
+    """Record a skipped mod to SYNC_SKIPPED_FILE for orchestrator summary."""
+    skipped_file = os.environ.get("SYNC_SKIPPED_FILE")
+    if skipped_file:
+        sp = Path(skipped_file)
+        sp.parent.mkdir(parents=True, exist_ok=True)
+        with open(sp, "a") as f:
+            json.dump({"mod_key": mod_key, "version": version, "reason": reason}, f)
+            f.write("\n")
+
+
+def _write_summary(mod_key: str, version: str) -> None:
+    """Record a synced mod to SYNC_SUMMARY_FILE for downstream dispatch."""
+    summary_file = os.environ.get("SYNC_SUMMARY_FILE")
+    if summary_file:
+        sp = Path(summary_file)
+        sp.parent.mkdir(parents=True, exist_ok=True)
+        with open(sp, "a") as f:
+            json.dump({"mod_key": mod_key, "version": version}, f)
+            f.write("\n")
 
 
 def _copy_file_with_target(
@@ -89,7 +112,6 @@ def _process_rule(
                 to_target = ex.to or ""
                 consumed_patterns.append(from_glob)
 
-                # Use Path.glob for matching; fnmatch semantics aligned
                 for m in unzip_dir.glob(from_glob):
                     if not m.is_file():
                         continue
@@ -143,10 +165,14 @@ def sync_mod(
     tag_override: str | None,
     dry_run: bool,
     ci: CIOutput,
-) -> tuple[str, str]:
-    """Sync a single mod: fetch release, download assets, push to assets branch.
+) -> tuple[str, str] | None:
+    """Sync a single mod. Returns (mod_key, version) if the mod needs to enter
+    the downstream build/publish matrix, or None if it should be skipped entirely.
 
-    Returns (mod_key, version) tuple.
+    Pre-flight checks:
+    1. If Thunderstore already has this exact version → return None (skip entirely)
+    2. If assets branch already has this version → skip download+push, but still
+       return (mod_key, version) so build/publish can proceed
     """
     mod = get_mod(cfg, mod_key, require_enabled=True)
     owner = mod.source.owner
@@ -157,6 +183,35 @@ def sync_mod(
     tag_name = release.tag_name
     html_url = release.html_url
 
+    # --- Pre-flight check 1: Thunderstore ---
+    ns = mod.thunderstore.namespace
+    nm = mod.thunderstore.name
+    api = ThunderstoreAPI()
+    ts_pkg = api.check_package_exists(ns, nm)
+    if ts_pkg is not None:
+        ts_version = ts_pkg.get("latest", {}).get("version_number")
+        if ts_version == version:
+            reason = f"version {version} already published on Thunderstore ({ns}/{nm})"
+            print(f"Skipping {mod_key}: {reason}")
+            _write_skipped(mod_key, version, reason)
+            return None
+
+    # --- Pre-flight check 2: Assets branch ---
+    branch = f"assets/{mod_key}"
+    branch_has_version = False
+    if remote_branch_exists(branch):
+        existing = list_versions_on_branch(branch, mod_key)
+        if version in existing:
+            print(f"Version {version} already on {branch}, skipping download+push")
+            branch_has_version = True
+
+    # If branch already has this version, skip the heavy download+push
+    # but still let it enter the matrix (build/publish needed if TS didn't have it)
+    if branch_has_version:
+        _write_summary(mod_key, version)
+        return mod_key, version
+
+    # --- Full sync: download, process, push ---
     print(f"Syncing {mod_key} from {owner}/{repo} tag {tag_name} -> version {version}")
 
     tmp_root = Path(tempfile.mkdtemp())
@@ -193,17 +248,10 @@ def sync_mod(
         with open(out_dir / "_sync_metadata.json", "w") as f:
             json.dump(metadata, f, indent=2)
 
-        branch = f"assets/{mod_key}"
         commit_msg = f"sync({mod_key}): {version} from {owner}/{repo}@{tag_name}"
         push_to_branch(branch, out_dir, mod_key, version, commit_msg, dry_run)
 
-        summary_file = os.environ.get("SYNC_SUMMARY_FILE")
-        if summary_file:
-            sp = Path(summary_file)
-            sp.parent.mkdir(parents=True, exist_ok=True)
-            with open(sp, "a") as f:
-                json.dump({"mod_key": mod_key, "version": version}, f)
-                f.write("\n")
+        _write_summary(mod_key, version)
 
         print(f"Synced {mod_key}@{version}")
         print(f"Source release: {html_url}")
@@ -219,10 +267,8 @@ def sync_all(
     dry_run: bool,
     ci: CIOutput,
 ) -> list[tuple[str, str]]:
-    """Sync all enabled mods. Errors are reported per-mod but do not halt the loop.
-
-    Returns list of (mod_key, version) for successfully synced mods.
-    """
+    """Sync all enabled mods. Returns list of (mod_key, version) for mods that
+    need to enter the downstream build/publish matrix. Skipped mods are excluded."""
     results: list[tuple[str, str]] = []
     mods = [m for m in cfg.mods if m.enabled]
     if not mods:
@@ -231,7 +277,8 @@ def sync_all(
     for mod in mods:
         try:
             result = sync_mod(cfg, mod.key, tag, dry_run, ci)
-            results.append(result)
+            if result is not None:
+                results.append(result)
         except Exception as e:
             print(f"Failed to sync {mod.key}: {e}")
     return results
