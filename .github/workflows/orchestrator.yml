@@ -16,6 +16,11 @@ on:
         description: Release tag override
         required: false
         type: string
+      dry_run:
+        description: Dry run (skip actual upload to Thunderstore)
+        required: false
+        type: boolean
+        default: true
   schedule:
     - cron: "0 0 * * *"
 
@@ -61,6 +66,7 @@ jobs:
       mod_key: ${{ matrix.mod.mod_key }}
       version: ${{ matrix.mod.version }}
       artifact_run_id: ${{ github.run_id }}
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
     permissions:
       contents: read
       actions: read
