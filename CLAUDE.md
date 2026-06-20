@@ -14,15 +14,18 @@ GitHub Release (source repo)
         ▼
 Phase 1: python -m thunderstore_pipeline sync
         │  Downloads release assets per mods.json asset rules
+        │  Fetches README from source, rewrites links → readme_rewrite
+        │  Optionally fetches CHANGELOG.md (if sync_changelog)
         │  Writes to a dedicated assets/<mod_key> git branch
-        │  Files: assets/<mod_key>/<version>/... + _sync_metadata.json
+        │  Files: <version>/... + _sync_metadata.json + readme_origin + readme_rewrite
         ▼
 assets/<mod_key> branch
         │
         ▼
 Phase 2: python -m thunderstore_pipeline build
-        │  Reads asset branch, generates manifest.json
-        │  Syncs README from source repo, rewrites relative links
+        │  Reads readme_rewrite from branch, renames to README.md
+        │  Reads CHANGELOG.md from branch if present
+        │  Generates manifest.json
         │  Produces <namespace>-<name>-<version>.zip
         │
         └── python -m thunderstore_pipeline validate
@@ -54,8 +57,8 @@ thunderstore_pipeline/                 # Python package (unified CLI)
   validate.py                          # Phase 2: Thunderstore validate API
   publish.py                           # Phase 3: chunked upload + publish
   ci_output.py                         # GITHUB_OUTPUT/SUMMARY/ENV integration
-  readme_rewriter.py                   # Relative link → absolute GitHub URL rewriting
-templates/<mod_key>/                   # Fallback README.md + icon.png per mod
+  readme_rewriter.py                   # Relative link → absolute GitHub URL rewriting (used in sync phase)
+templates/<mod_key>/                   # icon.png per mod
 build/                                 # .gitignored — local/output artifacts
   packages/<mod_key>/<ver>/            # Output zip files
   validation/                          # API validation response JSONs + raw request/response
@@ -156,7 +159,7 @@ Orchestrator limits parallel builds with `max-parallel: 2` and serializes publis
 - **Separate branches for assets**: Each `assets/<mod_key>` branch is the stable store of downloaded release content. Scripts refuse to overwrite an existing version directory — prevent accidental mutation.
 - **No auto-publish (manual gate)**: Phase 3 must be triggered explicitly. When triggered from `workflow_dispatch`, `dry_run` defaults to `true`. The orchestrator sets `dry_run=false` for the automated path.
 - **Token naming convention**: Thunderstore API tokens are stored as GitHub Secrets named `{NAMESPACE_UPPER_WITH_UNDERSCORE}_THUNDER_TOKEN` (e.g., `SMALL_TAILQWQ_THUNDER_TOKEN`). The `build.py` computes this from `thunderstore.namespace` via `namespace.upper().replace('-', '_')`.
-- **Readme fallback on sync failure**: If `sync_with_source_readme` is true but the source fetch fails, the build falls back to `templates/<mod_key>/README.md` instead of failing.
+- **README is mandatory**: sync aborts if README fetch fails (Thunderstore requires it). `sync_with_source_readme: false` means the build will fail. CHANGELOG is opt-in (`sync_changelog`), best-effort — absent is fine.
 - **`website_url` points to source repo**: The manifest's `website_url` field is set to `https://github.com/${owner}/${repo}` (the mod's own source repo), not this pipeline repo.
 - **Description truncation**: Manifest descriptions are truncated to 256 Unicode *characters* via Python string slicing `[:256]`, not raw bytes — prevents splitting multi-byte UTF-8 characters.
 - **Glob matching uses `fnmatch`**: Asset rule `matcher` fields use Python's `fnmatch.fnmatch` for shell-style glob matching (e.g., `*.dll` matches `RealTimeWeatherMod.dll`).
@@ -177,12 +180,13 @@ Orchestrator limits parallel builds with `max-parallel: 2` and serializes publis
                  "preserve_unmatched": true, "exclude": ["..."] }],
     "thunderstore": { "community": "...", "namespace": "...", "name": "...",
                       "description": "...", "dependencies": ["..."] },
-    "package_files": { "readme": "templates/x/README.md", "icon": "templates/x/icon.png",
-                       "readme_source": "README.md", "sync_with_source_readme": true }
+    "package_files": { "icon": "templates/x/icon.png",
+                       "readme_source": "README.md", "sync_with_source_readme": true,
+                       "sync_changelog": false, "changelog_source": "CHANGELOG.md" }
   }]
 }
 ```
 
 ## Git Branch Layout
 
-This repo uses `assets/<mod_key>` branches (e.g. `assets/igpu-savior`, `assets/aichat`) as content storage, entirely separate from the `main` branch which holds the pipeline source. The sync workflow creates or updates these branches from GitHub Actions with commit messages like `sync(igpu-savior): 1.2.3 from Small-tailqwq/iGPUSaviorMod@v1.2.3`.
+This repo uses `assets/<mod_key>` branches (e.g. `assets/igpu-savior`, `assets/aichat`) as content storage, entirely separate from the `main` branch which holds the pipeline source. Version directories sit directly at branch root (`<version>/BepInEx/...`, `<version>/readme_rewrite`, etc.). The sync workflow creates or updates these branches from GitHub Actions with commit messages like `sync(igpu-savior): 1.2.3 from Small-tailqwq/iGPUSaviorMod@v1.2.3`.

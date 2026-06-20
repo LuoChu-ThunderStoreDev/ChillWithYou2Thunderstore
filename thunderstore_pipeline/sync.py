@@ -13,7 +13,8 @@ from pathlib import Path
 
 from .config import get_mod
 from .models import ModsFile, ModConfig, AssetRule
-from .gh import get_release, download_asset, push_to_branch, remote_branch_exists, list_versions_on_branch
+from .gh import get_release, download_asset, push_to_branch, remote_branch_exists, list_versions_on_branch, get_raw_file
+from .readme_rewriter import rewrite_links
 from .ci_output import CIOutput
 from .thunderstore_api import ThunderstoreAPI
 
@@ -159,6 +160,45 @@ def _process_rule(
     return hit
 
 
+def _sync_readme_and_changelog(
+    out_dir: Path,
+    owner: str,
+    repo: str,
+    tag_name: str,
+    mod,
+) -> None:
+    """Fetch README (mandatory) and CHANGELOG (optional) from source repo.
+
+    README is stored as readme_origin (raw) and readme_rewrite (links rewritten).
+    CHANGELOG is stored as CHANGELOG.md.
+    """
+    pkg = mod.package_files
+    if not pkg.sync_with_source_readme:
+        return
+
+    # --- README (mandatory) ---
+    readme_raw = get_raw_file(owner, repo, tag_name, pkg.readme_source)
+    if readme_raw is None:
+        raise RuntimeError(
+            f"README is required for Thunderstore packages but not found at "
+            f"{pkg.readme_source} in {owner}/{repo}@{tag_name}"
+        )
+    (out_dir / "readme_origin").write_text(readme_raw, encoding="utf-8")
+
+    rewritten = rewrite_links(readme_raw, owner, repo, tag_name, pkg.readme_source)
+    (out_dir / "readme_rewrite").write_text(rewritten, encoding="utf-8")
+    print(f"README synced from {owner}/{repo}@{tag_name}:{pkg.readme_source}")
+
+    # --- CHANGELOG (opt-in, best-effort) ---
+    if pkg.sync_changelog:
+        changelog = get_raw_file(owner, repo, tag_name, pkg.changelog_source)
+        if changelog is not None:
+            (out_dir / "CHANGELOG.md").write_text(changelog, encoding="utf-8")
+            print(f"CHANGELOG synced from {owner}/{repo}@{tag_name}:{pkg.changelog_source}")
+        else:
+            print(f"CHANGELOG not found at {pkg.changelog_source}, skipping")
+
+
 def sync_mod(
     cfg: ModsFile,
     mod_key: str,
@@ -200,7 +240,7 @@ def sync_mod(
     branch = f"assets/{mod_key}"
     branch_has_version = False
     if remote_branch_exists(branch):
-        existing = list_versions_on_branch(branch, mod_key)
+        existing = list_versions_on_branch(branch)
         if version in existing:
             print(f"Version {version} already on {branch}, skipping download+push")
             branch_has_version = True
@@ -247,6 +287,8 @@ def sync_mod(
         }
         with open(out_dir / "_sync_metadata.json", "w") as f:
             json.dump(metadata, f, indent=2)
+
+        _sync_readme_and_changelog(out_dir, owner, repo, tag_name, mod)
 
         commit_msg = f"sync({mod_key}): {version} from {owner}/{repo}@{tag_name}"
         push_to_branch(branch, out_dir, mod_key, version, commit_msg, dry_run)

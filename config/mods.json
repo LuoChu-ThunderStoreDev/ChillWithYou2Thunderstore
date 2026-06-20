@@ -44,7 +44,6 @@
                 ]
             },
             "package_files": {
-                "readme": "templates/igpu-savior/README.md",
                 "icon": "templates/igpu-savior/icon.png"
             }
         },
@@ -82,7 +81,6 @@
                 ]
             },
             "package_files": {
-                "readme": "templates/realtime-weather/README.md",
                 "icon": "templates/realtime-weather/icon.png"
             }
         },
@@ -123,7 +121,6 @@
                 ]
             },
             "package_files": {
-                "readme": "templates/aichat/README.md",
                 "readme_source": "README.md",
                 "sync_with_source_readme": true,
                 "icon": "templates/aichat/icon.png"

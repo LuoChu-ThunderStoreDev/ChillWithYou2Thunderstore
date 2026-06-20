@@ -54,7 +54,6 @@ Thunderstore API Token 按命名空间配置为 GitHub Secret，命名规则：
         "dependencies": ["BepInEx-BepInExPack-5.4.2304"]
     },
     "package_files": {
-        "readme": "templates/my-mod/README.md",
         "icon": "templates/my-mod/icon.png"
     }
 }
@@ -64,8 +63,9 @@ Thunderstore API Token 按命名空间配置为 GitHub Secret，命名规则：
 
 在 `templates/my-mod/` 下放置：
 
-- `README.md` — 作为回退 README（从源仓库同步失败时使用）
 - `icon.png` — Thunderstore 列表图标
+
+> README 无需手动维护——流水线会自动从源仓库同步并重写链接。
 
 ### 5. 运行流水线
 
@@ -89,8 +89,8 @@ Thunderstore API Token 按命名空间配置为 GitHub Secret，命名规则：
 
 | 阶段 | 做什么 | 产物 |
 | ---- | ------ | ---- |
-| **① Sync** | 从源仓库 Release 下载资产，按规则提取文件 | `assets/<key>/<version>/` 分支 |
-| **② Build & Validate** | 生成 manifest.json、处理 README、打 zip 包、调用 Thunderstore 校验 API | 包 zip + 校验日志 |
+| **① Sync** | 从源仓库 Release 下载资产，按规则提取文件，同步 README 和可选的 CHANGELOG | `assets/<key>` 分支（`<version>/` 直接位于根，含 `readme_rewrite`、二进制文件） |
+| **② Build & Validate** | 生成 manifest.json、从分支读取 README 和 CHANGELOG、打 zip 包、调用 Thunderstore 校验 API | 包 zip + 校验日志 |
 | **③ Publish** | 分块上传 zip 到 Thunderstore 并提交发布 | 线上包 |
 
 > **注意：** 阶段 ③ 默认是 dry-run 模式（仅演练）。需要真正发布时，手动触发 `Publish` 工作流并将 `dry_run` 设为 `false`。全自动流水线（orchestrator）会自动关闭 dry-run。
@@ -151,7 +151,7 @@ THUNDERSTORE_AUTH_TOKEN=<your-token> uv run python -m thunderstore_pipeline publ
 ```text
 config/mods.json              # 唯一配置源 —— 所有 Mod 定义在这里
 thunderstore_pipeline/        # Python CLI 包（sync / build / validate / publish）
-templates/<mod_key>/          # 各 Mod 的回退 README.md + icon.png
+templates/<mod_key>/          # 各 Mod 的 icon.png
 .github/workflows/            # CI 工作流
 docs/                         # 详细文档
 scripts/                      # 旧版 Shell 脚本（保留作为参考）
@@ -173,7 +173,7 @@ Release 中的文件名与 `assets[].matcher` glob 不匹配。检查源仓库 R
 
 ### README 同步失败
 
-不影响构建 —— 会自动回退使用 `templates/<mod_key>/README.md`。检查源仓库的 `readme_source` 路径和对应 tag 是否存在。
+README 同步失败会**阻断同步**（Thunderstore 包必须含 README）。检查源仓库 `readme_source` 文件是否存在及对应 tag。CHANGELOG 同步失败仅警告（`sync_changelog: true` 时），因为许多仓库没有此文件。
 
 ### 标签必须严格遵循 SemVer
 

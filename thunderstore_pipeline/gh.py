@@ -94,11 +94,10 @@ def remote_branch_exists(branch: str) -> bool:
     return result.returncode == 0
 
 
-def list_versions_on_branch(branch: str, mod_key: str) -> list[str]:
-    """List semver versions under assets/<mod_key>/ on a branch."""
-    prefix = f"assets/{mod_key}"
+def list_versions_on_branch(branch: str) -> list[str]:
+    """List semver versions at branch root (direct <version>/ dirs)."""
     try:
-        result = _run(["git", "ls-tree", "-r", "--name-only", f"origin/{branch}", prefix])
+        result = _run(["git", "ls-tree", "-r", "--name-only", f"origin/{branch}"])
     except GhError:
         return []
     versions = set()
@@ -106,8 +105,8 @@ def list_versions_on_branch(branch: str, mod_key: str) -> list[str]:
         if not line:
             continue
         parts = line.split("/")
-        if len(parts) >= 3 and re.match(r"^\d+\.\d+\.\d+$", parts[2]):
-            versions.add(parts[2])
+        if re.match(r"^\d+\.\d+\.\d+$", parts[0]):
+            versions.add(parts[0])
     return sorted(versions, key=lambda v: tuple(int(x) for x in v.split(".")))
 
 
@@ -135,7 +134,7 @@ def push_to_branch(
         print(f"[DRY RUN] skip pushing {branch}:assets/{mod_key}/{version}")
         return
 
-    target_rel = f"assets/{mod_key}/{version}"
+    target_rel = version
     worktree_dir = Path(tempfile.mkdtemp())
 
     try:

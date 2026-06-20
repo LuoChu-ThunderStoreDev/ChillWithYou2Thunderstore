@@ -50,10 +50,11 @@ class ThunderstoreInfo(BaseModel):
 
 
 class PackageFiles(BaseModel):
-    readme: str
     icon: str
     readme_source: str = "README.md"
     sync_with_source_readme: bool = True
+    sync_changelog: bool = False
+    changelog_source: str = "CHANGELOG.md"
 
 
 class ModConfig(BaseModel):

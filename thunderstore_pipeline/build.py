@@ -13,10 +13,8 @@ from .models import ModsFile
 from .gh import (
     remote_branch_exists,
     list_versions_on_branch,
-    get_raw_file,
     clone_branch_content,
 )
-from .readme_rewriter import rewrite_links
 from .ci_output import CIOutput
 
 
@@ -38,7 +36,7 @@ def build_package(
 
     - Checks out the asset files for the given mod/version from the assets branch
     - Generates manifest.json from mods.json config
-    - Syncs README from source repo (best-effort), falls back to template on failure
+    - Reads pre-synced readme_rewrite (mandatory) and CHANGELOG.md (optional)
     - Assembles all files into a zip at build/packages/<mod_key>/<version>/
     - Writes GITHUB_OUTPUT for downstream workflow dispatch
     """
@@ -50,21 +48,19 @@ def build_package(
         raise SystemExit(1)
 
     if not version:
-        versions = list_versions_on_branch(branch, mod_key)
+        versions = list_versions_on_branch(branch)
         if not versions:
             print(f"No versions found under branch {branch}", file=sys.stderr)
             raise SystemExit(1)
         version = versions[-1]
-
-    asset_prefix = f"assets/{mod_key}/{version}"
 
     tmp_dir = Path(tempfile.mkdtemp())
     try:
         content_dir = tmp_dir / "content"
         content_dir.mkdir(parents=True)
 
-        clone_branch_content(branch, asset_prefix, tmp_dir)
-        extracted = tmp_dir / asset_prefix
+        clone_branch_content(branch, version, tmp_dir)
+        extracted = tmp_dir / version
         if extracted.exists():
             for item in extracted.iterdir():
                 dest = content_dir / item.name
@@ -80,46 +76,24 @@ def build_package(
         description = mod.thunderstore.description[:256]
         owner = mod.source.owner
         repo = mod.source.repo
-        readme_path = Path(mod.package_files.readme)
         icon_path = Path(mod.package_files.icon)
-        readme_source_path = mod.package_files.readme_source
-        readme_sync_enabled = mod.package_files.sync_with_source_readme
 
-        # Determine ref for README sync: use source.tag from metadata if available
-        readme_ref = f"v{version}"
-        metadata_path = content_dir / "_sync_metadata.json"
-        if metadata_path.exists():
-            with open(metadata_path) as f:
-                meta = json.load(f)
-            if meta.get("source", {}).get("tag"):
-                readme_ref = meta["source"]["tag"]
-
-        if not readme_path.exists():
-            print(f"Readme file not found: {readme_path}", file=sys.stderr)
-            raise SystemExit(1)
         if not icon_path.exists():
             print(f"Icon file not found: {icon_path}", file=sys.stderr)
             raise SystemExit(1)
 
-        effective_readme = readme_path
-        if readme_sync_enabled:
-            raw = get_raw_file(owner, repo, readme_ref, readme_source_path)
-            if raw is not None:
-                rewritten = rewrite_links(
-                    raw, owner, repo, readme_ref, readme_source_path,
-                )
-                generated = tmp_dir / "README.generated.md"
-                generated.write_text(rewritten, encoding="utf-8")
-                effective_readme = generated
-                print(
-                    f"Readme synced from source: "
-                    f"{owner}/{repo}@{readme_ref}:{readme_source_path}"
-                )
-            else:
-                print(
-                    f"Readme sync failed, fallback to local readme template: "
-                    f"{readme_path}"
-                )
+        # README is mandatory — must have been synced in phase 1
+        readme_rewrite_path = content_dir / "readme_rewrite"
+        if not readme_rewrite_path.exists():
+            print(
+                "readme_rewrite not found on asset branch — "
+                "README sync must have failed or sync_with_source_readme is false",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+
+        # CHANGELOG is optional
+        changelog_path = content_dir / "CHANGELOG.md"
 
         manifest = {
             "name": name,
@@ -134,10 +108,15 @@ def build_package(
         package_stage = tmp_dir / "package"
         package_stage.mkdir()
         shutil.copy2(manifest_path, package_stage / "manifest.json")
-        shutil.copy2(effective_readme, package_stage / "README.md")
+        # rename readme_rewrite → README.md on copy
+        shutil.copy2(readme_rewrite_path, package_stage / "README.md")
         shutil.copy2(icon_path, package_stage / "icon.png")
+        if changelog_path.exists():
+            shutil.copy2(changelog_path, package_stage / "CHANGELOG.md")
+
         for item in content_dir.iterdir():
-            if item.name == "_sync_metadata.json":
+            excluded = {"_sync_metadata.json", "readme_origin", "readme_rewrite", "CHANGELOG.md"}
+            if item.name in excluded:
                 continue
             dest = package_stage / item.name
             if item.is_dir():

@@ -135,7 +135,7 @@
 - `icon.png`
 - `CHANGELOG.md`
 
-这些文件由流水线在构建阶段自动生成或从源仓库同步。
+这些文件由流水线在同步/构建阶段自动生成或从源仓库同步。
 
 #### preserve_unmatched
 
@@ -226,31 +226,35 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
 
 ## package_files —— README 与图标
 
-定义 Mod 包的 README 和图标来源。
+定义 Mod 包的 README 和图标来源。README 由同步阶段从源仓库自动拉取并重写链接，图标使用本地模板。
 
 ```json
 "package_files": {
-    "readme": "templates/my-mod/README.md",
     "icon": "templates/my-mod/icon.png",
     "readme_source": "README.md",
-    "sync_with_source_readme": true
+    "sync_with_source_readme": true,
+    "sync_changelog": false,
+    "changelog_source": "CHANGELOG.md"
 }
 ```
 
 | 字段 | 类型 | 必填 | 说明 |
 | ---- | ---- | ---- | ---- |
-| `readme` | string | ✅ | 本地回退 README 路径。当源代码同步失败时使用此模板 |
 | `icon` | string | ✅ | 本地图标路径（PNG 格式，建议 256x256） |
-| `sync_with_source_readme` | boolean | ❌ | 是否从源仓库同步 README，默认 `true` |
+| `sync_with_source_readme` | boolean | ❌ | 是否从源仓库同步 README，默认 `true`。设为 `false` 会导致构建失败（Thunderstore 包必须包含 README） |
 | `readme_source` | string | ❌ | 源仓库中文档的相对路径，默认 `"README.md"` |
+| `sync_changelog` | boolean | ❌ | 是否同步源仓库 CHANGELOG。仅当 `sync_with_source_readme: true` 时生效，默认 `false` |
+| `changelog_source` | string | ❌ | 源仓库中 CHANGELOG 的相对路径，默认 `"CHANGELOG.md"`。拉取失败仅输出警告，不阻断同步 |
 
 ### README 同步机制
 
-1. 构建阶段首先尝试从源仓库下载 `readme_source` 对应文件
-2. 下载成功后，自动将其中所有**相对链接**改写为 GitHub 绝对链接：
+1. 同步阶段从源仓库下载 `readme_source` 对应文件，原文保存为 `readme_origin`
+2. 自动将其中所有**相对链接**改写为 GitHub 绝对路径，保存为 `readme_rewrite`：
    - 普通链接 → `https://github.com/<owner>/<repo>/blob/<tag>/...`
    - 图片链接 → `https://raw.githubusercontent.com/<owner>/<repo>/<tag>/...`
-3. 下载失败时，回退使用 `package_files.readme` 指定的本地模板文件
+3. README 拉取**失败即报错**，阻断同步（Thunderstore 包必须包含 README）
+4. 若 `sync_changelog: true`，还会拉取 `changelog_source`，失败仅警告不阻断
+5. 构建阶段将 `readme_rewrite` 重命名为 `README.md` 并打包；`CHANGELOG.md` 存在时一并打包
 
 > **提示：** 如果你的源仓库 README 没有任何相对链接或图片，同步后的内容与原文相同。如果你想用不同的文档作为 Thunderstore 页面，可以设置 `readme_source` 为其他路径。
 
@@ -283,7 +287,6 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
         "dependencies": ["BepInEx-BepInExPack-5.4.2304"]
     },
     "package_files": {
-        "readme": "templates/simple-mod/README.md",
         "icon": "templates/simple-mod/icon.png"
     }
 }
@@ -322,7 +325,6 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
         ]
     },
     "package_files": {
-        "readme": "templates/resource-mod/README.md",
         "icon": "templates/resource-mod/icon.png",
         "readme_source": "docs/THUNDERSTORE_README.md",
         "sync_with_source_readme": true
@@ -359,7 +361,6 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
         "dependencies": ["BepInEx-BepInExPack-5.4.2304"]
     },
     "package_files": {
-        "readme": "templates/readme-sync-mod/README.md",
         "icon": "templates/readme-sync-mod/icon.png",
         "sync_with_source_readme": true
     }
@@ -370,17 +371,28 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
 
 ## 常见场景
 
-### 关闭 README 同步，始终使用本地模板
+### 关闭 README 同步（不推荐）
 
 ```json
 "package_files": {
-    "readme": "templates/my-mod/README.md",
     "icon": "templates/my-mod/icon.png",
     "sync_with_source_readme": false
 }
 ```
 
-`templates/my-mod/README.md` 将直接放入包中，不做任何处理。
+> **警告：** 设为 `false` 后构建会失败，因为 Thunderstore 包必须包含 README。仅当你有其他方式提供 README 时才使用此选项。
+
+### 仅同步 README，不同步 CHANGELOG（默认行为）
+
+```json
+"package_files": {
+    "icon": "templates/my-mod/icon.png",
+    "sync_with_source_readme": true,
+    "sync_changelog": false
+}
+```
+
+> 默认 `sync_changelog` 为 `false`，只同步 README。即使设为 `true`，CHANGELOG 拉取失败也仅输出警告。
 
 ### 禁用某个 Mod（不参与全量同步）
 
