@@ -173,7 +173,7 @@ def _sync_readme_and_changelog(
     CHANGELOG is stored as CHANGELOG.md.
     """
     pkg = mod.package_files
-    if not pkg.sync_with_source_readme:
+    if not pkg.sync_readme:
         return
 
     # --- README (mandatory) ---

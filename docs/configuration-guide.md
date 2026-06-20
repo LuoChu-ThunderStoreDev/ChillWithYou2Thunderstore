@@ -232,7 +232,7 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
 "package_files": {
     "icon": "templates/my-mod/icon.png",
     "readme_source": "README.md",
-    "sync_with_source_readme": true,
+    "sync_readme": true,
     "sync_changelog": false,
     "changelog_source": "CHANGELOG.md"
 }
@@ -241,9 +241,9 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
 | 字段 | 类型 | 必填 | 说明 |
 | ---- | ---- | ---- | ---- |
 | `icon` | string | ✅ | 本地图标路径（PNG 格式，建议 256x256） |
-| `sync_with_source_readme` | boolean | ❌ | 是否从源仓库同步 README，默认 `true`。设为 `false` 会导致构建失败（Thunderstore 包必须包含 README） |
+| `sync_readme` | boolean | ❌ | 是否从源仓库同步 README，默认 `true`。设为 `false` 会导致构建失败（Thunderstore 包必须包含 README） |
 | `readme_source` | string | ❌ | 源仓库中文档的相对路径，默认 `"README.md"` |
-| `sync_changelog` | boolean | ❌ | 是否同步源仓库 CHANGELOG。仅当 `sync_with_source_readme: true` 时生效，默认 `false` |
+| `sync_changelog` | boolean | ❌ | 是否同步源仓库 CHANGELOG。仅当 `sync_readme: true` 时生效，默认 `false` |
 | `changelog_source` | string | ❌ | 源仓库中 CHANGELOG 的相对路径，默认 `"CHANGELOG.md"`。拉取失败仅输出警告，不阻断同步 |
 
 ### README 同步机制
@@ -327,7 +327,7 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
     "package_files": {
         "icon": "templates/resource-mod/icon.png",
         "readme_source": "docs/THUNDERSTORE_README.md",
-        "sync_with_source_readme": true
+        "sync_readme": true
     }
 }
 ```
@@ -362,7 +362,7 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
     },
     "package_files": {
         "icon": "templates/readme-sync-mod/icon.png",
-        "sync_with_source_readme": true
+        "sync_readme": true
     }
 }
 ```
@@ -376,7 +376,7 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
 ```json
 "package_files": {
     "icon": "templates/my-mod/icon.png",
-    "sync_with_source_readme": false
+    "sync_readme": false
 }
 ```
 
@@ -387,7 +387,7 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
 ```json
 "package_files": {
     "icon": "templates/my-mod/icon.png",
-    "sync_with_source_readme": true,
+    "sync_readme": true,
     "sync_changelog": false
 }
 ```

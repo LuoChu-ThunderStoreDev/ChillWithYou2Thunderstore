@@ -87,7 +87,7 @@ def build_package(
         if not readme_rewrite_path.exists():
             print(
                 "readme_rewrite not found on asset branch — "
-                "README sync must have failed or sync_with_source_readme is false",
+                "README sync must have failed or sync_readme is false",
                 file=sys.stderr,
             )
             raise SystemExit(1)
