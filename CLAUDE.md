@@ -66,6 +66,7 @@ build/                                 # .gitignored — local/output artifacts
   sync.yml                             # Phase 1: workflow_dispatch + workflow_call
   build-and-validate.yml               # Phase 2: workflow_dispatch + workflow_call
   publish.yml                          # Phase 3: workflow_dispatch + workflow_call
+  backfill.yml                         # Manual-only: sync all historical releases
   orchestrator.yml                     # Full pipeline: schedule + workflow_dispatch
 .github/actions/setup/action.yml       # Composite action: checkout + uv cache + install
 scripts/                               # Legacy shell scripts (kept for reference)
@@ -135,6 +136,11 @@ gh workflow run publish.yml -f mod_key=realtime-weather -f artifact_run_id=<run_
 gh workflow run orchestrator.yml
 
 # Auto: orchestrator runs daily at UTC 0 via schedule cron
+
+# Backfill historical versions (manual only)
+gh workflow run backfill.yml -f mod_key=realtime-weather
+gh workflow run backfill.yml  # all enabled mods
+gh workflow run backfill.yml -f dry_run=true  # dry-run first
 ```
 
 ## Concurrency Model
@@ -146,7 +152,7 @@ Each workflow uses concurrency groups keyed on `mod_key` to allow parallel proce
 | sync.yml | `sync-<mod_key>` or `sync-all` | false | One per mod at a time |
 | build-and-validate.yml | `build-<mod_key>` | false | One per mod at a time |
 | publish.yml | `publish-<mod_key>` | false | One per mod at a time |
-| orchestrator.yml | `orchestrator` | false | Only one full pipeline run |
+| backfill.yml | `backfill-<mod_key>` or `backfill-all` | false | Manual-only, no schedule |
 
 Orchestrator limits parallel builds with `max-parallel: 2` and serializes publishes with `max-parallel: 1`.
 

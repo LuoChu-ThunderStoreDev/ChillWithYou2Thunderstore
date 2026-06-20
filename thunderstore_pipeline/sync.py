@@ -13,7 +13,7 @@ from pathlib import Path
 
 from .config import get_mod
 from .models import ModsFile, ModConfig, AssetRule
-from .gh import get_release, download_asset, push_to_branch, remote_branch_exists, list_versions_on_branch, get_raw_file
+from .gh import get_release, download_asset, push_to_branch, remote_branch_exists, list_versions_on_branch, list_all_releases, get_raw_file
 from .readme_rewriter import rewrite_links
 from .ci_output import CIOutput
 from .thunderstore_api import ThunderstoreAPI
@@ -323,4 +323,120 @@ def sync_all(
                 results.append(result)
         except Exception as e:
             print(f"Failed to sync {mod.key}: {e}")
+    return results
+
+
+def sync_history(
+    cfg: ModsFile,
+    mod_key: str | None,
+    dry_run: bool,
+) -> dict[str, dict[str, list[str]]]:
+    """Backfill all historical releases to the assets branch.
+
+    Iterates ALL GitHub releases for each mod. Skips versions already
+    present on the branch. Syncs the rest using current mods.json rules.
+
+    Returns {mod_key: {"synced": ["1.0.0", ...], "skipped": ["1.1.0", ...]}}
+    """
+    results: dict[str, dict[str, list[str]]] = {}
+
+    if mod_key:
+        # Explicit --mod-key: get that specific mod regardless of enabled status
+        mod = get_mod(cfg, mod_key, require_enabled=False)
+        mods = [mod]
+    else:
+        mods = [m for m in cfg.mods if m.enabled]
+    if not mods:
+        print("No mods to backfill")
+        return results
+
+    for mod in mods:
+        mk = mod.key
+        owner = mod.source.owner
+        repo = mod.source.repo
+        branch = f"assets/{mk}"
+        results[mk] = {"synced": [], "skipped": []}
+
+        print(f"\n=== Backfilling {mk} ({owner}/{repo}) ===")
+
+        # Fetch all release tags
+        try:
+            all_tags = list_all_releases(owner, repo)
+        except Exception as e:
+            print(f"Failed to list releases for {mk}: {e}")
+            continue
+
+        # Get versions already on the branch
+        existing_versions: set[str] = set()
+        if remote_branch_exists(branch):
+            existing_versions = set(list_versions_on_branch(branch))
+
+        for tag in all_tags:
+            # Filter to SemVer only
+            try:
+                version = _semver_from_tag(tag)
+            except ValueError:
+                print(f"  Skipping non-SemVer tag: {tag}")
+                continue
+
+            # Skip if already on branch
+            if version in existing_versions:
+                print(f"  {version} — already on branch, skipping")
+                results[mk]["skipped"].append(version)
+                continue
+
+            # --- Sync this version ---
+            print(f"  Syncing {tag} -> version {version}")
+            try:
+                release = get_release(owner, repo, tag)
+            except Exception as e:
+                print(f"  Failed to get release {tag}: {e}")
+                continue
+
+            tmp_root = Path(tempfile.mkdtemp())
+            dl_dir = tmp_root / "downloads"
+            out_dir = tmp_root / "out"
+            dl_dir.mkdir(parents=True)
+            out_dir.mkdir(parents=True)
+
+            try:
+                assets_raw = [
+                    {"name": a.name, "browser_download_url": a.browser_download_url}
+                    for a in release.assets
+                ]
+
+                for rule in mod.assets:
+                    _process_rule(rule, assets_raw, dl_dir, out_dir)
+
+                if not any(out_dir.iterdir()):
+                    print(f"  No files collected for {mk}@{version}, skipping")
+                    continue
+
+                metadata = {
+                    "mod_key": mk,
+                    "source": {
+                        "owner": owner,
+                        "repo": repo,
+                        "tag": release.tag_name,
+                        "release_url": release.html_url,
+                    },
+                    "version": version,
+                    "synced_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                }
+                with open(out_dir / "_sync_metadata.json", "w") as f:
+                    json.dump(metadata, f, indent=2)
+
+                _sync_readme_and_changelog(out_dir, owner, repo, tag, mod)
+
+                commit_msg = f"backfill({mk}): {version} from {owner}/{repo}@{tag}"
+                push_to_branch(branch, out_dir, mk, version, commit_msg, dry_run)
+
+                results[mk]["synced"].append(version)
+                print(f"  Synced {mk}@{version}")
+
+            except Exception as e:
+                print(f"  Failed to sync {mk}@{version}: {e}")
+            finally:
+                shutil.rmtree(tmp_root, ignore_errors=True)
+
     return results

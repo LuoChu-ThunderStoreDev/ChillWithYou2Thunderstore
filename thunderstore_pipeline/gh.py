@@ -63,6 +63,13 @@ def download_asset(url: str, dest: Path) -> Path:
     return dest
 
 
+def list_all_releases(owner: str, repo: str) -> list[str]:
+    """Return all release tag names, newest first (paginated)."""
+    result = _run(["gh", "api", f"repos/{owner}/{repo}/releases",
+                   "--jq", ".[].tag_name", "--paginate"])
+    return [line.strip() for line in result.stdout.strip().split("\n") if line.strip()]
+
+
 def get_raw_file(owner: str, repo: str, ref: str, path: str) -> str | None:
     """Fetch raw file from raw.githubusercontent.com. Returns None on 404."""
     url = f"https://raw.githubusercontent.com/{owner}/{repo}/{ref}/{path}"
@@ -131,7 +138,7 @@ def push_to_branch(
 ) -> None:
     """Push files to a git branch via worktree. Skips if version exists."""
     if dry_run:
-        print(f"[DRY RUN] skip pushing {branch}:assets/{mod_key}/{version}")
+        print(f"[DRY RUN] skip pushing {branch}:{version}")
         return
 
     target_rel = version

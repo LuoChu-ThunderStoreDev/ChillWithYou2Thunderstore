@@ -1,0 +1,55 @@
+name: Backfill Historical Versions
+
+on:
+  workflow_dispatch:
+    inputs:
+      mod_key:
+        description: Mod key to backfill (omit for all enabled)
+        required: false
+        type: string
+      dry_run:
+        description: Dry run (no push to branch)
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: backfill-${{ inputs.mod_key || 'all' }}
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      - name: Run backfill
+        id: backfill
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BACKFILL_SUMMARY_FILE: /tmp/backfill_summary.json
+        run: |
+          uv run python -m thunderstore_pipeline backfill \
+            ${{ inputs.mod_key != '' && format('--mod-key {0}', inputs.mod_key) || '--all' }} \
+            ${{ (inputs.dry_run == true || inputs.dry_run == 'true') && '--dry-run' || '' }}
+
+      - name: Write step summary
+        if: always()
+        run: |
+          if [[ -f /tmp/backfill_summary.json ]]; then
+            echo "## Backfill Summary" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Mod | Synced Versions | Already Present |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|-----|-----------------|------------------|" >> "$GITHUB_STEP_SUMMARY"
+            jq -r 'to_entries[] | "| \(.key) | \(.value.synced | join(", ")) | \(.value.skipped | join(", ")) |"' /tmp/backfill_summary.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## Backfill Summary" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "No summary file produced — check run logs." >> "$GITHUB_STEP_SUMMARY"
+          fi

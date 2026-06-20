@@ -2,6 +2,7 @@
 """Typer CLI entry point with subcommands for each pipeline phase."""
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -101,3 +102,31 @@ def publish(
     cfg = load_config()
     ci = CIOutput()
     publish_package(cfg, mod_key, version, package_zip, dry_run, ci)
+
+
+@app.command()
+def backfill(
+    all: Annotated[bool, typer.Option("--all")] = False,
+    mod_key: Annotated[Optional[str], typer.Option("--mod-key")] = None,
+    dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
+) -> None:
+    """Backfill all historical releases to the assets branch.
+
+    Manual trigger only — no schedule, no call from orchestrator.
+    Iterates ALL GitHub releases for the mod(s) and syncs missing versions.
+    """
+    from .sync import sync_history
+
+    if not all and not mod_key:
+        print("Error: --mod-key or --all is required", file=sys.stderr)
+        raise typer.Exit(code=1)
+
+    cfg = load_config()
+    results = sync_history(cfg, mod_key if mod_key else None, dry_run)
+
+    for mk, r in results.items():
+        print(f"\n{mk}: synced={r['synced']} skipped={r['skipped']}")
+
+    summary_file = os.environ.get("BACKFILL_SUMMARY_FILE")
+    if summary_file:
+        Path(summary_file).write_text(json.dumps(results, indent=2), encoding="utf-8")
