@@ -382,8 +382,9 @@ def sync_history(
             existing_versions = set(list_versions_on_branch(branch))
 
         for tag_name in all_tags:
-            # If a specific tag was requested, skip everything else
-            if tag is not None and tag_name != tag:
+            # If a specific tag was requested, skip everything else.
+            # Normalize "v" prefix: GitHub tags are "v1.2.3" but users may pass "1.2.3".
+            if tag is not None and tag_name.removeprefix("v") != tag.removeprefix("v"):
                 continue
             # Filter to SemVer only
             try:
