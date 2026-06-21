@@ -13,7 +13,7 @@
 
 ---
 
-[![Chill with You](https://github.com/Small-tailqwq/iGPUSaviorMod/blob/v1.9.1/img/header_schinese.jpg)](https://store.steampowered.com/app/3548580/)
+[![Chill with You](https://raw.githubusercontent.com/Small-tailqwq/iGPUSaviorMod/v1.9.1/img/header_schinese.jpg)](https://store.steampowered.com/app/3548580/)
 
 > 「放松时光：与你共享Lo-Fi故事」是一个与喜欢写故事的女孩聪音一起工作的有声小说游戏。您可以自定义艺术家的原创乐曲、环境音和风景，以营造一个专注于工作的环境。在与聪音的关系加深的过程中，您可能会发现与她之间的特别联系。
 ---
