@@ -45,13 +45,12 @@ def sync(
     from .sync import sync_mod, sync_all
 
     cfg = load_config()
-    ci = CIOutput()
     if all:
-        sync_all(cfg, tag, dry_run, ci)
+        sync_all(cfg, tag, dry_run)
     elif mod_key:
-        sync_mod(cfg, mod_key, tag, dry_run, ci)
+        sync_mod(cfg, mod_key, tag, dry_run)
     elif os.environ.get("GITHUB_EVENT_NAME") == "schedule":
-        sync_all(cfg, tag, dry_run, ci)
+        sync_all(cfg, tag, dry_run)
     else:
         print("Error: --mod-key or --all is required", file=sys.stderr)
         raise typer.Exit(code=1)

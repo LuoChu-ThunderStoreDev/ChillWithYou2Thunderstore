@@ -198,61 +198,21 @@ def _sync_readme_and_changelog(
             print(f"CHANGELOG not found at {pkg.changelog_source}, skipping")
 
 
-def sync_mod(
-    cfg: ModsFile,
-    mod_key: str,
-    tag_override: str | None,
+def _sync_one_version(
+    mod: ModConfig,
+    owner: str,
+    repo: str,
+    release,
+    version: str,
+    branch: str,
     dry_run: bool,
-    ci: CIOutput,
-) -> tuple[str, str] | None:
-    """Sync a single mod. Returns (mod_key, version) if the mod needs to enter
-    the downstream build/publish matrix, or None if it should be skipped entirely.
+    commit_msg: str,
+) -> None:
+    """Download release assets, process rules, write metadata, sync README/CHANGELOG, push.
 
-    Pre-flight checks:
-    1. If Thunderstore already has this exact version → return None (skip entirely)
-    2. If assets branch already has this version → skip download+push, but still
-       return (mod_key, version) so build/publish can proceed
+    Shared by sync_mod and sync_history. Raises on failure — callers decide
+    whether to propagate or suppress.
     """
-    mod = get_mod(cfg, mod_key, require_enabled=True)
-    owner = mod.source.owner
-    repo = mod.source.repo
-
-    release = get_release(owner, repo, tag_override)
-    version = _semver_from_tag(release.tag_name)
-    tag_name = release.tag_name
-    html_url = release.html_url
-
-    # --- Pre-flight check 1: Thunderstore ---
-    ns = mod.thunderstore.namespace
-    nm = mod.thunderstore.name
-    api = ThunderstoreAPI()
-    ts_pkg = api.check_package_exists(ns, nm)
-    if ts_pkg is not None:
-        ts_version = ts_pkg.get("latest", {}).get("version_number")
-        if ts_version == version:
-            reason = f"version {version} already published on Thunderstore ({ns}/{nm})"
-            print(f"Skipping {mod_key}: {reason}")
-            _write_skipped(mod_key, version, reason)
-            return None
-
-    # --- Pre-flight check 2: Assets branch ---
-    branch = f"assets/{mod_key}"
-    branch_has_version = False
-    if remote_branch_exists(branch):
-        existing = list_versions_on_branch(branch)
-        if version in existing:
-            print(f"Version {version} already on {branch}, skipping download+push")
-            branch_has_version = True
-
-    # If branch already has this version, skip the heavy download+push
-    # but still let it enter the matrix (build/publish needed if TS didn't have it)
-    if branch_has_version:
-        _write_summary(mod_key, version)
-        return mod_key, version
-
-    # --- Full sync: download, process, push ---
-    print(f"Syncing {mod_key} from {owner}/{repo} tag {tag_name} -> version {version}")
-
     tmp_root = Path(tempfile.mkdtemp())
     dl_dir = tmp_root / "downloads"
     out_dir = tmp_root / "out"
@@ -270,16 +230,16 @@ def sync_mod(
 
         if not any(out_dir.iterdir()):
             raise RuntimeError(
-                f"No files collected for {mod_key} from release assets"
+                f"No files collected for {mod.key} from release assets"
             )
 
         metadata = {
-            "mod_key": mod_key,
+            "mod_key": mod.key,
             "source": {
                 "owner": owner,
                 "repo": repo,
-                "tag": tag_name,
-                "release_url": html_url,
+                "tag": release.tag_name,
+                "release_url": release.html_url,
             },
             "version": version,
             "synced_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -287,26 +247,73 @@ def sync_mod(
         with open(out_dir / "_sync_metadata.json", "w") as f:
             json.dump(metadata, f, indent=2)
 
-        _sync_readme_and_changelog(out_dir, owner, repo, tag_name, mod)
+        _sync_readme_and_changelog(out_dir, owner, repo, release.tag_name, mod)
 
-        commit_msg = f"sync({mod_key}): {version} from {owner}/{repo}@{tag_name}"
-        push_to_branch(branch, out_dir, mod_key, version, commit_msg, dry_run)
-
-        _write_summary(mod_key, version)
-
-        print(f"Synced {mod_key}@{version}")
-        print(f"Source release: {html_url}")
-        return mod_key, version
-
+        push_to_branch(branch, out_dir, mod.key, version, commit_msg, dry_run)
     finally:
         shutil.rmtree(tmp_root, ignore_errors=True)
+
+
+def sync_mod(
+    cfg: ModsFile,
+    mod_key: str,
+    tag_override: str | None,
+    dry_run: bool,
+    _ci: CIOutput | None = None,   # deprecated, kept for backward compat
+) -> tuple[str, str] | None:
+    """Sync a single mod. Returns (mod_key, version) if the mod needs to enter
+    the downstream build/publish matrix, or None if it should be skipped entirely.
+
+    Pre-flight checks:
+    1. If Thunderstore already has this exact version → return None (skip entirely)
+    2. If assets branch already has this version → skip download+push, but still
+       return (mod_key, version) so build/publish can proceed
+    """
+    mod = get_mod(cfg, mod_key, require_enabled=False)
+    owner = mod.source.owner
+    repo = mod.source.repo
+
+    release = get_release(owner, repo, tag_override)
+    version = _semver_from_tag(release.tag_name)
+    tag_name = release.tag_name
+
+    # --- Pre-flight check 1: Thunderstore ---
+    ns = mod.thunderstore.namespace
+    nm = mod.thunderstore.name
+    api = ThunderstoreAPI()
+    ts_pkg = api.check_package_exists(ns, nm)
+    if ts_pkg is not None:
+        ts_version = ts_pkg.get("latest", {}).get("version_number")
+        if ts_version == version:
+            reason = f"version {version} already published on Thunderstore ({ns}/{nm})"
+            print(f"Skipping {mod_key}: {reason}")
+            _write_skipped(mod_key, version, reason)
+            return None
+
+    # --- Pre-flight check 2: Assets branch ---
+    branch = f"assets/{mod_key}"
+    if remote_branch_exists(branch):
+        existing = list_versions_on_branch(branch)
+        if version in existing:
+            print(f"Version {version} already on {branch}, skipping download+push")
+            _write_summary(mod_key, version)
+            return mod_key, version
+
+    # --- Full sync ---
+    print(f"Syncing {mod_key} from {owner}/{repo} tag {tag_name} -> version {version}")
+    commit_msg = f"sync({mod_key}): {version} from {owner}/{repo}@{tag_name}"
+    _sync_one_version(mod, owner, repo, release, version, branch, dry_run, commit_msg)
+
+    _write_summary(mod_key, version)
+    print(f"Synced {mod_key}@{version}")
+    print(f"Source release: {release.html_url}")
+    return mod_key, version
 
 
 def sync_all(
     cfg: ModsFile,
     tag: str | None,
     dry_run: bool,
-    ci: CIOutput,
 ) -> list[tuple[str, str]]:
     """Sync all enabled mods. Returns list of (mod_key, version) for mods that
     need to enter the downstream build/publish matrix. Skipped mods are excluded."""
@@ -317,7 +324,7 @@ def sync_all(
         return results
     for mod in mods:
         try:
-            result = sync_mod(cfg, mod.key, tag, dry_run, ci)
+            result = sync_mod(cfg, mod.key, tag, dry_run)
             if result is not None:
                 results.append(result)
         except Exception as e:
@@ -395,54 +402,12 @@ def sync_history(
             print(f"  Syncing {tag_name} -> version {version}")
             try:
                 release = get_release(owner, repo, tag_name)
-            except Exception as e:
-                print(f"  Failed to get release {tag_name}: {e}")
-                continue
-
-            tmp_root = Path(tempfile.mkdtemp())
-            dl_dir = tmp_root / "downloads"
-            out_dir = tmp_root / "out"
-            dl_dir.mkdir(parents=True)
-            out_dir.mkdir(parents=True)
-
-            try:
-                assets_raw = [
-                    {"name": a.name, "browser_download_url": a.browser_download_url}
-                    for a in release.assets
-                ]
-
-                for rule in mod.assets:
-                    _process_rule(rule, assets_raw, dl_dir, out_dir)
-
-                if not any(out_dir.iterdir()):
-                    print(f"  No files collected for {mk}@{version}, skipping")
-                    continue
-
-                metadata = {
-                    "mod_key": mk,
-                    "source": {
-                        "owner": owner,
-                        "repo": repo,
-                        "tag": release.tag_name,
-                        "release_url": release.html_url,
-                    },
-                    "version": version,
-                    "synced_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                }
-                with open(out_dir / "_sync_metadata.json", "w") as f:
-                    json.dump(metadata, f, indent=2)
-
-                _sync_readme_and_changelog(out_dir, owner, repo, tag_name, mod)
-
                 commit_msg = f"backfill({mk}): {version} from {owner}/{repo}@{tag_name}"
-                push_to_branch(branch, out_dir, mk, version, commit_msg, dry_run)
-
+                _sync_one_version(mod, owner, repo, release, version, branch,
+                                  dry_run, commit_msg)
                 results[mk]["synced"].append(version)
                 print(f"  Synced {mk}@{version}")
-
             except Exception as e:
                 print(f"  Failed to sync {mk}@{version}: {e}")
-            finally:
-                shutil.rmtree(tmp_root, ignore_errors=True)
 
     return results
