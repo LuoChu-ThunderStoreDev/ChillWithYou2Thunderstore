@@ -207,11 +207,13 @@ def _sync_one_version(
     branch: str,
     dry_run: bool,
     commit_msg: str,
+    force: bool = False,
 ) -> None:
     """Download release assets, process rules, write metadata, sync README/CHANGELOG, push.
 
     Shared by sync_mod and sync_history. Raises on failure — callers decide
-    whether to propagate or suppress.
+    whether to propagate or suppress. When force=True, overwrites existing
+    version directory on the branch.
     """
     tmp_root = Path(tempfile.mkdtemp())
     dl_dir = tmp_root / "downloads"
@@ -249,7 +251,7 @@ def _sync_one_version(
 
         _sync_readme_and_changelog(out_dir, owner, repo, release.tag_name, mod)
 
-        push_to_branch(branch, out_dir, mod.key, version, commit_msg, dry_run)
+        push_to_branch(branch, out_dir, mod.key, version, commit_msg, dry_run, force=force)
     finally:
         shutil.rmtree(tmp_root, ignore_errors=True)
 
@@ -405,8 +407,9 @@ def sync_history(
             try:
                 release = get_release(owner, repo, tag_name)
                 commit_msg = f"backfill({mk}): {version} from {owner}/{repo}@{tag_name}"
+                # force=True when --tag: user explicitly asked to re-sync
                 _sync_one_version(mod, owner, repo, release, version, branch,
-                                  dry_run, commit_msg)
+                                  dry_run, commit_msg, force=(tag is not None))
                 results[mk]["synced"].append(version)
                 print(f"  Synced {mk}@{version}")
             except Exception as e:

@@ -135,9 +135,9 @@ def clone_branch_content(branch: str, prefix: str, dest: Path) -> None:
 
 def push_to_branch(
     branch: str, files_dir: Path, mod_key: str, version: str,
-    commit_msg: str, dry_run: bool = False,
+    commit_msg: str, dry_run: bool = False, force: bool = False,
 ) -> None:
-    """Push files to a git branch via worktree. Skips if version exists."""
+    """Push files to a git branch via worktree. Skips if version exists unless force=True."""
     if dry_run:
         print(f"[DRY RUN] skip pushing {branch}:{version}")
         return
@@ -160,7 +160,7 @@ def push_to_branch(
                            cwd=worktree_dir, capture_output=True, timeout=30)
 
         target_dir = worktree_dir / target_rel
-        if target_dir.exists() and any(target_dir.iterdir()):
+        if not force and target_dir.exists() and any(target_dir.iterdir()):
             print(f"Version already exists, skip push: {target_rel}")
             return
 
