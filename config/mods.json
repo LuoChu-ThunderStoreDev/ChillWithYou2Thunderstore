@@ -2,7 +2,7 @@
     "mods": [
         {
             "key": "igpu-savior",
-            "enabled": false,
+            "enabled": true,
             "source": {
                 "owner": "Small-tailqwq",
                 "repo": "iGPUSaviorMod"
@@ -30,7 +30,7 @@
         },
         {
             "key": "realtime-weather",
-            "enabled": false,
+            "enabled": true,
             "source": {
                 "owner": "Small-tailqwq",
                 "repo": "RealTimeWeatherMod"
