@@ -104,8 +104,9 @@ def remote_branch_exists(branch: str) -> bool:
 def list_versions_on_branch(branch: str) -> list[str]:
     """List semver versions at branch root (direct <version>/ dirs)."""
     try:
-        result = _run(["git", "ls-tree", "-r", "--name-only", f"origin/{branch}"])
-    except GhError:
+        result = _run(["git", "ls-tree", "--name-only", f"origin/{branch}"])
+    except GhError as e:
+        print(f"Warning: failed to list versions on {branch}: {e}", file=sys.stderr)
         return []
     versions = set()
     for line in result.stdout.strip().split("\n"):

@@ -14,10 +14,11 @@ GitHub Release (source repo)
         ▼
 Phase 1: python -m thunderstore_pipeline sync
         │  Downloads release assets per mods.json asset rules
-        │  Fetches README from source, rewrites links → readme_rewrite.md
-        │  Optionally fetches CHANGELOG.md (if sync_changelog)
+        │  Fetches README from source (if sync_readme), rewrites links → readme_rewrite.md
+        │  Optionally fetches CHANGELOG.md (if sync_changelog, independent of sync_readme)
         │  Writes to a dedicated assets/<mod_key> git branch
         │  Files: <version>/... + _sync_metadata.json + readme_origin.md + readme_rewrite.md
+        │         + CHANGELOG.md (when synced)
         ▼
 assets/<mod_key> branch
         │
@@ -165,7 +166,11 @@ Orchestrator limits parallel builds with `max-parallel: 2` and serializes publis
 - **Separate branches for assets**: Each `assets/<mod_key>` branch is the stable store of downloaded release content. Scripts refuse to overwrite an existing version directory — prevent accidental mutation.
 - **No auto-publish (manual gate)**: Phase 3 must be triggered explicitly. When triggered from `workflow_dispatch`, `dry_run` defaults to `true`. The orchestrator sets `dry_run=false` for the automated path.
 - **Token naming convention**: Thunderstore API tokens are stored as GitHub Secrets named `{NAMESPACE_UPPER_WITH_UNDERSCORE}_THUNDER_TOKEN` (e.g., `SMALL_TAILQWQ_THUNDER_TOKEN`). The `build.py` computes this from `thunderstore.namespace` via `namespace.upper().replace('-', '_')`.
-- **README is mandatory**: sync aborts if README fetch fails (Thunderstore requires it). `sync_readme: false` means the build will fail. CHANGELOG is opt-in (`sync_changelog`), best-effort — absent is fine.
+- **README is mandatory**: Thunderstore requires it. `sync_readme: true` (default) fetches
+  from source, rewrites links, and stores readme_origin.md / readme_rewrite.md on the assets
+  branch. `sync_readme: false` reads from `templates/<mod_key>/README.md` at build time
+  (not synced to the assets branch). CHANGELOG is independently controlled (`sync_changelog`,
+  defaults to `true`), best-effort — absent is fine.
 - **`website_url` points to source repo**: The manifest's `website_url` field is set to `https://github.com/${owner}/${repo}` (the mod's own source repo), not this pipeline repo.
 - **Description truncation**: Manifest descriptions are truncated to 256 Unicode *characters* via Python string slicing `[:256]`, not raw bytes — prevents splitting multi-byte UTF-8 characters.
 - **Glob matching uses `fnmatch`**: Asset rule `matcher` fields use Python's `fnmatch.fnmatch` for shell-style glob matching (e.g., `*.dll` matches `RealTimeWeatherMod.dll`).
@@ -188,7 +193,7 @@ Orchestrator limits parallel builds with `max-parallel: 2` and serializes publis
                       "description": "...", "dependencies": ["..."] },
     "package_files": { "icon": "templates/x/icon.png",
                        "readme_source": "README.md", "sync_readme": true,
-                       "sync_changelog": false, "changelog_source": "CHANGELOG.md" }
+                       "sync_changelog": true, "changelog_source": "CHANGELOG.md" }
   }]
 }
 ```

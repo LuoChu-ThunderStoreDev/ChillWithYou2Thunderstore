@@ -7,6 +7,10 @@ on:
         description: Mod key to backfill (omit for all enabled)
         required: false
         type: string
+      tag:
+        description: Single release tag to backfill (e.g. v1.3.7)
+        required: false
+        type: string
       dry_run:
         description: Dry run (no push to branch)
         required: false
@@ -37,6 +41,7 @@ jobs:
         run: |
           uv run python -m thunderstore_pipeline backfill \
             ${{ inputs.mod_key != '' && format('--mod-key {0}', inputs.mod_key) || '--all' }} \
+            ${{ inputs.tag != '' && format('--tag {0}', inputs.tag) || '' }} \
             ${{ (inputs.dry_run == true || inputs.dry_run == 'true') && '--dry-run' || '' }}
 
       - name: Write step summary

@@ -170,26 +170,25 @@ def _sync_readme_and_changelog(
     """Fetch README (mandatory) and CHANGELOG (optional) from source repo.
 
     README is stored as readme_origin.md (raw) and readme_rewrite.md (links rewritten).
-    CHANGELOG is stored as CHANGELOG.md.
+    CHANGELOG is stored as CHANGELOG.md. Both options are independent of each other.
     """
     pkg = mod.package_files
-    if not pkg.sync_readme:
-        return
 
-    # --- README (mandatory) ---
-    readme_raw = get_raw_file(owner, repo, tag_name, pkg.readme_source)
-    if readme_raw is None:
-        raise RuntimeError(
-            f"README is required for Thunderstore packages but not found at "
-            f"{pkg.readme_source} in {owner}/{repo}@{tag_name}"
-        )
-    (out_dir / "readme_origin.md").write_text(readme_raw, encoding="utf-8")
+    # --- README (controlled by sync_readme) ---
+    if pkg.sync_readme:
+        readme_raw = get_raw_file(owner, repo, tag_name, pkg.readme_source)
+        if readme_raw is None:
+            raise RuntimeError(
+                f"README is required for Thunderstore packages but not found at "
+                f"{pkg.readme_source} in {owner}/{repo}@{tag_name}"
+            )
+        (out_dir / "readme_origin.md").write_text(readme_raw, encoding="utf-8")
 
-    rewritten = rewrite_links(readme_raw, owner, repo, tag_name, pkg.readme_source)
-    (out_dir / "readme_rewrite.md").write_text(rewritten, encoding="utf-8")
-    print(f"README synced from {owner}/{repo}@{tag_name}:{pkg.readme_source}")
+        rewritten = rewrite_links(readme_raw, owner, repo, tag_name, pkg.readme_source)
+        (out_dir / "readme_rewrite.md").write_text(rewritten, encoding="utf-8")
+        print(f"README synced from {owner}/{repo}@{tag_name}:{pkg.readme_source}")
 
-    # --- CHANGELOG (opt-in, best-effort) ---
+    # --- CHANGELOG (independently controlled, best-effort) ---
     if pkg.sync_changelog:
         changelog = get_raw_file(owner, repo, tag_name, pkg.changelog_source)
         if changelog is not None:
@@ -330,11 +329,15 @@ def sync_history(
     cfg: ModsFile,
     mod_key: str | None,
     dry_run: bool,
+    tag: str | None = None,
 ) -> dict[str, dict[str, list[str]]]:
     """Backfill all historical releases to the assets branch.
 
     Iterates ALL GitHub releases for each mod. Skips versions already
     present on the branch. Syncs the rest using current mods.json rules.
+
+    If tag is provided, only that specific release tag is processed
+    (useful for retrying a single failed release).
 
     Returns {mod_key: {"synced": ["1.0.0", ...], "skipped": ["1.1.0", ...]}}
     """
@@ -371,12 +374,15 @@ def sync_history(
         if remote_branch_exists(branch):
             existing_versions = set(list_versions_on_branch(branch))
 
-        for tag in all_tags:
+        for tag_name in all_tags:
+            # If a specific tag was requested, skip everything else
+            if tag is not None and tag_name != tag:
+                continue
             # Filter to SemVer only
             try:
-                version = _semver_from_tag(tag)
+                version = _semver_from_tag(tag_name)
             except ValueError:
-                print(f"  Skipping non-SemVer tag: {tag}")
+                print(f"  Skipping non-SemVer tag: {tag_name}")
                 continue
 
             # Skip if already on branch
@@ -386,11 +392,11 @@ def sync_history(
                 continue
 
             # --- Sync this version ---
-            print(f"  Syncing {tag} -> version {version}")
+            print(f"  Syncing {tag_name} -> version {version}")
             try:
-                release = get_release(owner, repo, tag)
+                release = get_release(owner, repo, tag_name)
             except Exception as e:
-                print(f"  Failed to get release {tag}: {e}")
+                print(f"  Failed to get release {tag_name}: {e}")
                 continue
 
             tmp_root = Path(tempfile.mkdtemp())
@@ -426,9 +432,9 @@ def sync_history(
                 with open(out_dir / "_sync_metadata.json", "w") as f:
                     json.dump(metadata, f, indent=2)
 
-                _sync_readme_and_changelog(out_dir, owner, repo, tag, mod)
+                _sync_readme_and_changelog(out_dir, owner, repo, tag_name, mod)
 
-                commit_msg = f"backfill({mk}): {version} from {owner}/{repo}@{tag}"
+                commit_msg = f"backfill({mk}): {version} from {owner}/{repo}@{tag_name}"
                 push_to_branch(branch, out_dir, mk, version, commit_msg, dry_run)
 
                 results[mk]["synced"].append(version)

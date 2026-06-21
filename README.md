@@ -173,7 +173,7 @@ Release 中的文件名与 `assets[].matcher` glob 不匹配。检查源仓库 R
 
 ### README 同步失败
 
-README 同步失败会**阻断同步**（Thunderstore 包必须含 README）。检查源仓库 `readme_source` 文件是否存在及对应 tag。CHANGELOG 同步失败仅警告（`sync_changelog: true` 时），因为许多仓库没有此文件。
+README 同步失败（`sync_readme: true` 时）会**阻断同步**（Thunderstore 包必须含 README）。检查源仓库 `readme_source` 文件是否存在及对应 tag。CHANGELOG 同步失败仅警告（`sync_changelog` 默认为 `true`），因为许多仓库没有此文件。
 
 ### 标签必须严格遵循 SemVer
 

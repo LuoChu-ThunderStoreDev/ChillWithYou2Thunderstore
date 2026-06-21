@@ -53,7 +53,7 @@ class PackageFiles(BaseModel):
     icon: str
     readme_source: str = "README.md"
     sync_readme: bool = True
-    sync_changelog: bool = False
+    sync_changelog: bool = True
     changelog_source: str = "CHANGELOG.md"
 
 

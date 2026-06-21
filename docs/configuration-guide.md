@@ -241,22 +241,37 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
 | 字段 | 类型 | 必填 | 说明 |
 | ---- | ---- | ---- | ---- |
 | `icon` | string | ✅ | 本地图标路径（PNG 格式，建议 256x256） |
-| `sync_readme` | boolean | ❌ | 是否从源仓库同步 README，默认 `true`。设为 `false` 会导致构建失败（Thunderstore 包必须包含 README） |
+| `sync_readme` | boolean | ❌ | 是否从源仓库同步 README，默认 `true`。设为 `false` 时从 `templates/<key>/README.md` 模板读取（不同步到 assets 分支） |
 | `readme_source` | string | ❌ | 源仓库中文档的相对路径，默认 `"README.md"` |
-| `sync_changelog` | boolean | ❌ | 是否同步源仓库 CHANGELOG。仅当 `sync_readme: true` 时生效，默认 `false` |
+| `sync_changelog` | boolean | ❌ | 是否同步源仓库 CHANGELOG，默认 `true`。拉取失败仅输出警告，不阻断同步。独立控制，不受 `sync_readme` 影响 |
 | `changelog_source` | string | ❌ | 源仓库中 CHANGELOG 的相对路径，默认 `"CHANGELOG.md"`。拉取失败仅输出警告，不阻断同步 |
 
 ### README 同步机制
+
+`sync_readme` 决定了 README 的来源：
+
+**`sync_readme: true`（默认）—— 从上游同步：**
 
 1. 同步阶段从源仓库下载 `readme_source` 对应文件，原文保存为 `readme_origin.md`
 2. 自动将其中所有**相对链接**改写为 GitHub 绝对路径，保存为 `readme_rewrite.md`：
    - 普通链接 → `https://github.com/<owner>/<repo>/blob/<tag>/...`
    - 图片链接 → `https://raw.githubusercontent.com/<owner>/<repo>/<tag>/...`
 3. README 拉取**失败即报错**，阻断同步（Thunderstore 包必须包含 README）
-4. 若 `sync_changelog: true`，还会拉取 `changelog_source`，失败仅警告不阻断
-5. 构建阶段将 `readme_rewrite.md` 重命名为 `README.md` 并打包；`CHANGELOG.md` 存在时一并打包
+4. 构建阶段将 `readme_rewrite.md` 重命名为 `README.md` 并打包
 
-> **提示：** 如果你的源仓库 README 没有任何相对链接或图片，同步后的内容与原文相同。如果你想用不同的文档作为 Thunderstore 页面，可以设置 `readme_source` 为其他路径。
+**`sync_readme: false` —— 使用本地模板：**
+
+1. 同步阶段**跳过** README 拉取
+2. 构建阶段从 `templates/<mod_key>/README.md` 读取模板文件
+3. 模板**不经过**链接重写，直接打包为 `README.md`
+4. 模板文件不存在时构建失败
+
+**CHANGELOG（独立控制）：**
+
+- `sync_changelog: true`（默认）时，拉取 `changelog_source`，失败仅警告不阻断
+- CHANGELOG 同步不受 `sync_readme` 影响，两者完全独立
+
+> **提示：** 如果你的源仓库 README 没有任何相对链接或图片，同步后的内容与原文相同。如果你想用不同的文档作为 Thunderstore 页面，可以设置 `readme_source` 为其他路径。或者设置 `sync_readme: false`，在 `templates/<mod_key>/README.md` 放入完全自定义的内容。
 
 ## 完整示例
 
@@ -371,7 +386,7 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
 
 ## 常见场景
 
-### 关闭 README 同步（不推荐）
+### 使用本地 README 模板（不同步上游）
 
 ```json
 "package_files": {
@@ -380,9 +395,9 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
 }
 ```
 
-> **警告：** 设为 `false` 后构建会失败，因为 Thunderstore 包必须包含 README。仅当你有其他方式提供 README 时才使用此选项。
+> 设置 `sync_readme: false` 时，构建阶段从 `templates/<mod_key>/README.md` 读取模板。此文件**不经过**链接重写，直接打包。你需要在该路径下准备 README.md 文件。
 
-### 仅同步 README，不同步 CHANGELOG（默认行为）
+### 关闭 CHANGELOG 同步
 
 ```json
 "package_files": {
@@ -392,7 +407,7 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
 }
 ```
 
-> 默认 `sync_changelog` 为 `false`，只同步 README。即使设为 `true`，CHANGELOG 拉取失败也仅输出警告。
+> 默认 `sync_changelog` 为 `true`，会尝试从源仓库同步 CHANGELOG。如果你的仓库没有 CHANGELOG.md，设为 `false` 可避免每次同步输出 "CHANGELOG not found" 警告。
 
 ### 禁用某个 Mod（不参与全量同步）
 

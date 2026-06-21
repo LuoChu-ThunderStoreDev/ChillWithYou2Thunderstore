@@ -17,6 +17,10 @@ from .gh import (
 )
 from .ci_output import CIOutput
 
+# When sync_readme is False, README is read from this local template directory
+# Convention: templates/<mod_key>/README.md
+TEMPLATE_README_DIR = "templates"
+
 
 def _token_key(namespace: str) -> str:
     """Derive the GitHub Secret token key from a Thunderstore namespace.
@@ -82,15 +86,30 @@ def build_package(
             print(f"Icon file not found: {icon_path}", file=sys.stderr)
             raise SystemExit(1)
 
-        # README is mandatory — must have been synced in phase 1
-        readme_rewrite_path = content_dir / "readme_rewrite.md"
-        if not readme_rewrite_path.exists():
-            print(
-                "readme_rewrite.md not found on asset branch — "
-                "README sync must have failed or sync_readme is false",
-                file=sys.stderr,
-            )
-            raise SystemExit(1)
+        pkg = mod.package_files
+
+        if pkg.sync_readme:
+            # README is synced from source repo in Phase 1 (sync)
+            readme_rewrite_path = content_dir / "readme_rewrite.md"
+            if not readme_rewrite_path.exists():
+                print(
+                    "readme_rewrite.md not found on asset branch — "
+                    "README sync must have failed",
+                    file=sys.stderr,
+                )
+                raise SystemExit(1)
+        else:
+            # README is read from local template (not synced)
+            readme_rewrite_path = Path(f"{TEMPLATE_README_DIR}/{mod_key}/README.md")
+            if not readme_rewrite_path.exists():
+                print(
+                    f"Template README not found: {readme_rewrite_path}",
+                    file=sys.stderr,
+                )
+                raise SystemExit(1)
+            # Copy into content_dir so downstream logic works transparently
+            shutil.copy2(readme_rewrite_path, content_dir / "readme_rewrite.md")
+            readme_rewrite_path = content_dir / "readme_rewrite.md"
 
         # CHANGELOG is optional
         changelog_path = content_dir / "CHANGELOG.md"
