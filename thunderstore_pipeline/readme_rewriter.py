@@ -6,7 +6,7 @@ import posixpath
 import re
 from pathlib import PurePosixPath
 
-INLINE_LINK_RE = re.compile(r"(!?\[[^\]]*\]\()([^\)]+)(\))")
+INLINE_LINK_RE = re.compile(r"(!?\[[^\[\]]*\]\()([^\)]+)(\))")
 REF_LINK_RE = re.compile(r"^(\s*\[[^\]]+\]:\s*)(\S+)(.*)$")
 
 
