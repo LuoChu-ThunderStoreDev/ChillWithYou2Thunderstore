@@ -36,7 +36,7 @@ def build_package(
 
     - Checks out the asset files for the given mod/version from the assets branch
     - Generates manifest.json from mods.json config
-    - Reads pre-synced readme_rewrite (mandatory) and CHANGELOG.md (optional)
+    - Reads pre-synced readme_rewrite.md (mandatory) and CHANGELOG.md (optional)
     - Assembles all files into a zip at build/packages/<mod_key>/<version>/
     - Writes GITHUB_OUTPUT for downstream workflow dispatch
     """
@@ -83,10 +83,10 @@ def build_package(
             raise SystemExit(1)
 
         # README is mandatory — must have been synced in phase 1
-        readme_rewrite_path = content_dir / "readme_rewrite"
+        readme_rewrite_path = content_dir / "readme_rewrite.md"
         if not readme_rewrite_path.exists():
             print(
-                "readme_rewrite not found on asset branch — "
+                "readme_rewrite.md not found on asset branch — "
                 "README sync must have failed or sync_readme is false",
                 file=sys.stderr,
             )
@@ -108,14 +108,19 @@ def build_package(
         package_stage = tmp_dir / "package"
         package_stage.mkdir()
         shutil.copy2(manifest_path, package_stage / "manifest.json")
-        # rename readme_rewrite → README.md on copy
+        # rename readme_rewrite.md → README.md on copy
         shutil.copy2(readme_rewrite_path, package_stage / "README.md")
         shutil.copy2(icon_path, package_stage / "icon.png")
         if changelog_path.exists():
             shutil.copy2(changelog_path, package_stage / "CHANGELOG.md")
 
         for item in content_dir.iterdir():
-            excluded = {"_sync_metadata.json", "readme_origin", "readme_rewrite", "CHANGELOG.md"}
+            excluded = {
+                "_sync_metadata.json",
+                "readme_origin.md",
+                "readme_rewrite.md",
+                "CHANGELOG.md",
+            }
             if item.name in excluded:
                 continue
             dest = package_stage / item.name

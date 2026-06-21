@@ -169,7 +169,7 @@ def _sync_readme_and_changelog(
 ) -> None:
     """Fetch README (mandatory) and CHANGELOG (optional) from source repo.
 
-    README is stored as readme_origin (raw) and readme_rewrite (links rewritten).
+    README is stored as readme_origin.md (raw) and readme_rewrite.md (links rewritten).
     CHANGELOG is stored as CHANGELOG.md.
     """
     pkg = mod.package_files
@@ -183,10 +183,10 @@ def _sync_readme_and_changelog(
             f"README is required for Thunderstore packages but not found at "
             f"{pkg.readme_source} in {owner}/{repo}@{tag_name}"
         )
-    (out_dir / "readme_origin").write_text(readme_raw, encoding="utf-8")
+    (out_dir / "readme_origin.md").write_text(readme_raw, encoding="utf-8")
 
     rewritten = rewrite_links(readme_raw, owner, repo, tag_name, pkg.readme_source)
-    (out_dir / "readme_rewrite").write_text(rewritten, encoding="utf-8")
+    (out_dir / "readme_rewrite.md").write_text(rewritten, encoding="utf-8")
     print(f"README synced from {owner}/{repo}@{tag_name}:{pkg.readme_source}")
 
     # --- CHANGELOG (opt-in, best-effort) ---

@@ -248,13 +248,13 @@ Token 对应的 GitHub Secret 名由 `namespace` 通过规则生成：
 
 ### README 同步机制
 
-1. 同步阶段从源仓库下载 `readme_source` 对应文件，原文保存为 `readme_origin`
-2. 自动将其中所有**相对链接**改写为 GitHub 绝对路径，保存为 `readme_rewrite`：
+1. 同步阶段从源仓库下载 `readme_source` 对应文件，原文保存为 `readme_origin.md`
+2. 自动将其中所有**相对链接**改写为 GitHub 绝对路径，保存为 `readme_rewrite.md`：
    - 普通链接 → `https://github.com/<owner>/<repo>/blob/<tag>/...`
    - 图片链接 → `https://raw.githubusercontent.com/<owner>/<repo>/<tag>/...`
 3. README 拉取**失败即报错**，阻断同步（Thunderstore 包必须包含 README）
 4. 若 `sync_changelog: true`，还会拉取 `changelog_source`，失败仅警告不阻断
-5. 构建阶段将 `readme_rewrite` 重命名为 `README.md` 并打包；`CHANGELOG.md` 存在时一并打包
+5. 构建阶段将 `readme_rewrite.md` 重命名为 `README.md` 并打包；`CHANGELOG.md` 存在时一并打包
 
 > **提示：** 如果你的源仓库 README 没有任何相对链接或图片，同步后的内容与原文相同。如果你想用不同的文档作为 Thunderstore 页面，可以设置 `readme_source` 为其他路径。
 

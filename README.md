@@ -89,7 +89,7 @@ Thunderstore API Token 按命名空间配置为 GitHub Secret，命名规则：
 
 | 阶段 | 做什么 | 产物 |
 | ---- | ------ | ---- |
-| **① Sync** | 从源仓库 Release 下载资产，按规则提取文件，同步 README 和可选的 CHANGELOG | `assets/<key>` 分支（`<version>/` 直接位于根，含 `readme_rewrite`、二进制文件） |
+| **① Sync** | 从源仓库 Release 下载资产，按规则提取文件，同步 README 和可选的 CHANGELOG | `assets/<key>` 分支（`<version>/` 直接位于根，含 `readme_rewrite.md`、二进制文件） |
 | **② Build & Validate** | 生成 manifest.json、从分支读取 README 和 CHANGELOG、打 zip 包、调用 Thunderstore 校验 API | 包 zip + 校验日志 |
 | **③ Publish** | 分块上传 zip 到 Thunderstore 并提交发布 | 线上包 |
 

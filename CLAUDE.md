@@ -14,16 +14,16 @@ GitHub Release (source repo)
         ▼
 Phase 1: python -m thunderstore_pipeline sync
         │  Downloads release assets per mods.json asset rules
-        │  Fetches README from source, rewrites links → readme_rewrite
+        │  Fetches README from source, rewrites links → readme_rewrite.md
         │  Optionally fetches CHANGELOG.md (if sync_changelog)
         │  Writes to a dedicated assets/<mod_key> git branch
-        │  Files: <version>/... + _sync_metadata.json + readme_origin + readme_rewrite
+        │  Files: <version>/... + _sync_metadata.json + readme_origin.md + readme_rewrite.md
         ▼
 assets/<mod_key> branch
         │
         ▼
 Phase 2: python -m thunderstore_pipeline build
-        │  Reads readme_rewrite from branch, renames to README.md
+        │  Reads readme_rewrite.md from branch, renames to README.md
         │  Reads CHANGELOG.md from branch if present
         │  Generates manifest.json
         │  Produces <namespace>-<name>-<version>.zip
@@ -195,4 +195,4 @@ Orchestrator limits parallel builds with `max-parallel: 2` and serializes publis
 
 ## Git Branch Layout
 
-This repo uses `assets/<mod_key>` branches (e.g. `assets/igpu-savior`, `assets/aichat`) as content storage, entirely separate from the `main` branch which holds the pipeline source. Version directories sit directly at branch root (`<version>/BepInEx/...`, `<version>/readme_rewrite`, etc.). The sync workflow creates or updates these branches from GitHub Actions with commit messages like `sync(igpu-savior): 1.2.3 from Small-tailqwq/iGPUSaviorMod@v1.2.3`.
+This repo uses `assets/<mod_key>` branches (e.g. `assets/igpu-savior`, `assets/aichat`) as content storage, entirely separate from the `main` branch which holds the pipeline source. Version directories sit directly at branch root (`<version>/BepInEx/...`, `<version>/readme_rewrite.md`, etc.). The sync workflow creates or updates these branches from GitHub Actions with commit messages like `sync(igpu-savior): 1.2.3 from Small-tailqwq/iGPUSaviorMod@v1.2.3`.
