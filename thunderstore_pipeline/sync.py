@@ -393,8 +393,9 @@ def sync_history(
                 print(f"  Skipping non-SemVer tag: {tag_name}")
                 continue
 
-            # Skip if already on branch
-            if version in existing_versions:
+            # Skip if already on branch (skip this check when --tag is specified —
+            # the user is explicitly asking to re-sync this version).
+            if tag is None and version in existing_versions:
                 print(f"  {version} — already on branch, skipping")
                 results[mk]["skipped"].append(version)
                 continue
