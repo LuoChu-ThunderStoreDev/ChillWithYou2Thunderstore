@@ -345,8 +345,9 @@ def sync_history(
     Iterates ALL GitHub releases for each mod. Skips versions already
     present on the branch. Syncs the rest using current mods.json rules.
 
-    If tag is provided, only that specific release tag is processed
-    (useful for retrying a single failed release).
+    If a specific tag is provided, only that release is processed.
+    If tag is "all", force-re-syncs every release (ignores existing
+    versions on branch).
 
     Returns {mod_key: {"synced": ["1.0.0", ...], "skipped": ["1.1.0", ...]}}
     """
@@ -383,10 +384,13 @@ def sync_history(
         if remote_branch_exists(branch):
             existing_versions = set(list_versions_on_branch(branch))
 
+        # Determine mode
+        is_all_force = tag == "all"
+        is_specific_tag = tag is not None and tag != "all"
+
         for tag_name in all_tags:
             # If a specific tag was requested, skip everything else.
-            # Normalize "v" prefix: GitHub tags are "v1.2.3" but users may pass "1.2.3".
-            if tag is not None and tag_name.removeprefix("v") != tag.removeprefix("v"):
+            if is_specific_tag and tag_name.removeprefix("v") != tag.removeprefix("v"):
                 continue
             # Filter to SemVer only
             try:
@@ -395,9 +399,9 @@ def sync_history(
                 print(f"  Skipping non-SemVer tag: {tag_name}")
                 continue
 
-            # Skip if already on branch (skip this check when --tag is specified —
-            # the user is explicitly asking to re-sync this version).
-            if tag is None and version in existing_versions:
+            # Skip if already on branch (unless --tag is specified —
+            # the user is explicitly asking to re-sync).
+            if not is_specific_tag and not is_all_force and version in existing_versions:
                 print(f"  {version} — already on branch, skipping")
                 results[mk]["skipped"].append(version)
                 continue
@@ -407,9 +411,10 @@ def sync_history(
             try:
                 release = get_release(owner, repo, tag_name)
                 commit_msg = f"backfill({mk}): {version} from {owner}/{repo}@{tag_name}"
-                # force=True when --tag: user explicitly asked to re-sync
+                # force=True when --tag or --tag all: user explicitly asked to re-sync
                 _sync_one_version(mod, owner, repo, release, version, branch,
-                                  dry_run, commit_msg, force=(tag is not None))
+                                  dry_run, commit_msg,
+                                  force=(is_specific_tag or is_all_force))
                 results[mk]["synced"].append(version)
                 print(f"  Synced {mk}@{version}")
             except Exception as e:

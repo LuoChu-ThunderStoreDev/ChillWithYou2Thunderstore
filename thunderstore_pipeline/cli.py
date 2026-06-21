@@ -114,7 +114,8 @@ def backfill(
 
     Manual trigger only — no schedule, no call from orchestrator.
     Iterates ALL GitHub releases for the mod(s) and syncs missing versions.
-    Use --tag to backfill a single specific release version.
+    Use --tag <version> to backfill a single specific release.
+    Use --tag all to force re-sync every release (ignore existing on branch).
     """
     from .sync import sync_history
 
